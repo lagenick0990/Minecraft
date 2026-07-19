@@ -92,6 +92,8 @@ export default function App() {
     { type: BlockType.IRON_ORE, count: 4 },
     { type: BlockType.GOLD_ORE, count: 2 },
     { type: BlockType.DIAMOND_ORE, count: 1 },
+    { type: BlockType.APPLE, count: 10 },
+    { type: BlockType.COOKED_PORKCHOP, count: 5 },
   ]);
 
   // Initial Hotbar slots configuration
@@ -101,9 +103,9 @@ export default function App() {
     BlockType.STONE,
     BlockType.WOOD,
     BlockType.LEAVES,
-    BlockType.SAND,
     BlockType.PLANKS,
-    BlockType.GLASS,
+    BlockType.APPLE,
+    BlockType.COOKED_PORKCHOP,
     BlockType.COBBLESTONE,
   ]);
 
@@ -169,12 +171,27 @@ export default function App() {
 
     if (gameMode === 'SURVIVAL') {
       setInventory((prevInv) => {
-        const item = prevInv.find((i) => i.type === blockType);
-        if (item) {
-          return prevInv.map((i) => (i.type === blockType ? { ...i, count: i.count + 1 } : i));
-        } else {
-          return [...prevInv, { type: blockType, count: 1 }];
+        let updatedInv = prevInv.map((i) => (i.type === blockType ? { ...i, count: i.count + 1 } : i));
+        if (!prevInv.some((i) => i.type === blockType)) {
+          updatedInv = [...prevInv, { type: blockType, count: 1 }];
         }
+
+        // 20% chance to drop an Apple when leaves are broken
+        if (blockType === BlockType.LEAVES || blockType === BlockType.REDWOOD_LEAVES) {
+          if (Math.random() < 0.20) {
+            setTimeout(() => {
+              addNotification('✨ An Apple fell from the leaves! 🍎', 'text-green-300 font-semibold');
+            }, 300);
+            const appleItem = updatedInv.find((i) => i.type === BlockType.APPLE);
+            if (appleItem) {
+              updatedInv = updatedInv.map((i) => (i.type === BlockType.APPLE ? { ...i, count: i.count + 1 } : i));
+            } else {
+              updatedInv = [...updatedInv, { type: BlockType.APPLE, count: 1 }];
+            }
+          }
+        }
+
+        return updatedInv;
       });
     }
   };

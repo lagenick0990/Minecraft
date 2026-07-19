@@ -21,6 +21,8 @@ export enum BlockType {
   CACTUS = 19,
   REDWOOD_LOG = 20,
   REDWOOD_LEAVES = 21,
+  APPLE = 22,
+  COOKED_PORKCHOP = 23,
 }
 
 export interface BlockConfig {
@@ -197,6 +199,20 @@ export const BLOCK_DEFINITIONS: Record<BlockType, BlockConfig> = {
     textureColorMap: { base: '#064e3b', shadow: '#022c22', highlight: '#059669' },
     isTransparent: true,
     isSolid: true,
+  },
+  [BlockType.APPLE]: {
+    type: BlockType.APPLE,
+    name: 'Apple',
+    color: '#e74c3c',
+    textureColorMap: { base: '#e74c3c', shadow: '#c0392b', highlight: '#ff6b6b' },
+    isSolid: false,
+  },
+  [BlockType.COOKED_PORKCHOP]: {
+    type: BlockType.COOKED_PORKCHOP,
+    name: 'Cooked Porkchop',
+    color: '#d35400',
+    textureColorMap: { base: '#d35400', shadow: '#a04000', highlight: '#e59866' },
+    isSolid: false,
   },
 };
 

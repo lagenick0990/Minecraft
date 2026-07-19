@@ -81,6 +81,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
     let lastCoordUpdate = 0;
     let lastTimeUpdate = 0;
+    let lastDamageTime = 0;
+    let lastHungerDepletionTime = performance.now();
+    let lastRegenTime = performance.now();
+    let previousHealth = statsRef.current.health;
 
     // --- GAME ENGINE CONSTANTS ---
     const CHUNK_SIZE = 16;
@@ -109,24 +113,35 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     renderer.toneMappingExposure = 1.0;
     mountRef.current.appendChild(renderer.domElement);
 
-    // Light Setup
-    const ambientLight = new THREE.AmbientLight('#ffffff', 0.55);
+    // Ultra High Quality Light Setup
+    // 1. Soft Hemisphere light representing sky bounce and ground bounce colors
+    const ambientLight = new THREE.AmbientLight('#ffffff', 0.45);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.DirectionalLight('#fffdf2', 1.2);
-    sunLight.position.set(20, 40, 10);
+    const hemiLight = new THREE.HemisphereLight('#85c1e9', '#2d3748', 0.35); // sky blue top, dark slate bottom
+    scene.add(hemiLight);
+
+    // 2. High Resolution Sun light with soft shadows
+    const sunLight = new THREE.DirectionalLight('#fffdf2', 1.5);
+    sunLight.position.set(30, 50, 15);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 1024;
-    sunLight.shadow.mapSize.height = 1024;
+    sunLight.shadow.mapSize.width = 4096; // ULTRA high shadow resolution
+    sunLight.shadow.mapSize.height = 4096;
     sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 150;
-    const d = 30;
+    sunLight.shadow.camera.far = 160;
+    const d = 45; // wider shadow frustum covers more chunks smoothly
     sunLight.shadow.camera.left = -d;
     sunLight.shadow.camera.right = d;
     sunLight.shadow.camera.top = d;
     sunLight.shadow.camera.bottom = -d;
-    sunLight.shadow.bias = -0.0005;
+    sunLight.shadow.bias = -0.0003; // perfectly tuned shadow bias to eliminate shadow acne
+    sunLight.shadow.normalBias = 0.04; // normal bias further improves shadow quality on block edges
     scene.add(sunLight);
+
+    // 3. Ambient bounce rim light to add beautiful side shading
+    const rimLight = new THREE.DirectionalLight('#a1c4fd', 0.4);
+    rimLight.position.set(-30, 20, -15); // opposite to Sun for gorgeous rim lighting!
+    scene.add(rimLight);
 
     // Custom skybox dome / stars for night
     const starsGeometry = new THREE.BufferGeometry();
@@ -1144,7 +1159,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       sunLight.color.copy(actualSunColor);
       sunLight.intensity = actualSunIntensity;
       ambientLight.color.copy(actualAmbientColor);
-      ambientLight.intensity = actualAmbientIntensity;
+      ambientLight.intensity = actualAmbientIntensity * 0.75;
+
+      if (hemiLight) {
+        hemiLight.color.copy(actualSkyColor);
+        hemiLight.intensity = actualAmbientIntensity * 0.5;
+      }
+      if (rimLight) {
+        rimLight.color.copy(actualSunColor);
+        rimLight.intensity = actualSunIntensity * 0.25;
+      }
 
       // Smoothly fade star opacity
       starsMaterial.opacity = actualStarsOpacity;
@@ -1224,6 +1248,37 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       }
     };
 
+    // --- EATING FOOD ---
+    const eatFood = (foodType: BlockType) => {
+      if (gameModeRef.current === 'SURVIVAL') {
+        const count = inventoryCount(foodType);
+        if (count <= 0) {
+          addNotification('⚠️ Out of food!', 'text-amber-400');
+          return;
+        }
+      }
+
+      const currentHunger = statsRef.current.hunger;
+      if (currentHunger >= statsRef.current.maxHunger) {
+        addNotification("You are already full! No need to eat. 😋", 'text-amber-400');
+        return;
+      }
+
+      const restoreAmount = foodType === BlockType.APPLE ? 4 : 8;
+      const foodName = foodType === BlockType.APPLE ? 'Apple 🍎' : 'Cooked Porkchop 🥩';
+      const newHunger = Math.min(statsRef.current.maxHunger, currentHunger + restoreAmount);
+
+      onUpdateStats({ hunger: newHunger });
+      onBlockPlaced(foodType); // Consume from inventory
+
+      // Play munching and swallowing sounds
+      playSynthSound(280, 'square', 0.08);
+      setTimeout(() => playSynthSound(240, 'square', 0.08), 100);
+      setTimeout(() => playSynthSound(200, 'triangle', 0.16), 200);
+
+      addNotification(`😋 Ate ${foodName}! Restored +${restoreAmount} Hunger.`, 'text-emerald-400 font-medium');
+    };
+
     // --- BLOCK PLACING ---
     const placeSelectedBlock = () => {
       if (!targetedBlockPos || !targetedBlockNormal) return;
@@ -1275,7 +1330,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       mineTargetBlock();
     };
     triggerVirtualPlaceRef.current = () => {
-      placeSelectedBlock();
+      const activeSlotType = hotbarRef.current[activeHotbarIndexRef.current];
+      if (activeSlotType === BlockType.APPLE || activeSlotType === BlockType.COOKED_PORKCHOP) {
+        eatFood(activeSlotType);
+      } else {
+        placeSelectedBlock();
+      }
     };
 
     // --- INPUT EVENT CONTROLLERS ---
@@ -1353,7 +1413,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             mineTargetBlock();
           }
         } else if (e.button === 2) {
-          placeSelectedBlock();
+          const activeSlotType = hotbarRef.current[activeHotbarIndexRef.current];
+          if (activeSlotType === BlockType.APPLE || activeSlotType === BlockType.COOKED_PORKCHOP) {
+            eatFood(activeSlotType);
+          } else {
+            placeSelectedBlock();
+          }
         }
       }
     };
@@ -1609,6 +1674,55 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         performance.now(),
         particleBursts
       );
+
+      // --- SURVIVAL METABOLICS & REGENERATION ---
+      const currentTime = performance.now();
+      const currentHealth = statsRef.current.health;
+      if (currentHealth < previousHealth) {
+        lastDamageTime = currentTime;
+      }
+      previousHealth = currentHealth;
+
+      if (gameModeRef.current === 'SURVIVAL') {
+        // 1. Slow hunger depletion based on movement
+        const isMoving = activeKeys['w'] || activeKeys['s'] || activeKeys['a'] || activeKeys['d'] || activeKeys[' '] || activeKeys['shift'];
+        const depletionInterval = isMoving ? 22000 : 44000;
+        if (currentTime - lastHungerDepletionTime > depletionInterval) {
+          const currentHunger = statsRef.current.hunger;
+          if (currentHunger > 0) {
+            onUpdateStats({ hunger: Math.max(0, currentHunger - 1) });
+            if (currentHunger - 1 === 4) {
+              addNotification('⚠️ You are getting hungry! Find some food. 🍎', 'text-amber-400 font-semibold');
+            } else if (currentHunger - 1 === 0) {
+              addNotification('☠️ Starving! You are taking damage from hunger!', 'text-rose-500 font-bold');
+            }
+          }
+          lastHungerDepletionTime = currentTime;
+        }
+
+        // 2. Starvation damage at 0 hunger (drains to 1 health every 4s)
+        if (statsRef.current.hunger === 0 && currentTime - lastRegenTime > 4000) {
+          if (statsRef.current.health > 1) {
+            onUpdateStats({ health: Math.max(1, statsRef.current.health - 1) });
+            playSynthSound(100, 'sawtooth', 0.15);
+            addNotification('💔 Starving...', 'text-rose-400');
+          }
+          lastRegenTime = currentTime;
+        }
+
+        // 3. Health regeneration at >= 90% hunger (>= 18) and not damaged in last 6s
+        if (statsRef.current.hunger >= 18) {
+          const hasNotTakenDamageRecently = (currentTime - lastDamageTime) > 6000;
+          if (hasNotTakenDamageRecently && statsRef.current.health < statsRef.current.maxHealth) {
+            if (currentTime - lastRegenTime > 3500) {
+              onUpdateStats({ health: Math.min(statsRef.current.maxHealth, statsRef.current.health + 1) });
+              playSynthSound(500, 'sine', 0.1);
+              addNotification('💚 Health regenerating...', 'text-emerald-300');
+              lastRegenTime = currentTime;
+            }
+          }
+        }
+      }
 
       // Handle procedurally generating chunks as player wanders
       manageChunksAroundPlayer();

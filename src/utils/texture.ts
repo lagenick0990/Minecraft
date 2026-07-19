@@ -245,6 +245,47 @@ export function createPixelTexture(
           }
           break;
 
+        case BlockType.APPLE:
+          // Translucent apple cutout texture!
+          const ax = x - 8;
+          const ay = y - 9;
+          const distToAppleCenter = Math.sqrt(ax * ax + ay * ay);
+          if (distToAppleCenter <= 4.5) {
+            const isAppleHighlight = ax < -1 && ay < -1;
+            const isAppleShadow = ax > 1 || ay > 1;
+            color = isAppleHighlight ? highlight : isAppleShadow ? shadow : base;
+          } else if (x === 8 && y >= 3 && y <= 5) {
+            color = '#5c4033'; // Stem (brown)
+          } else if (x === 9 && y === 3) {
+            color = '#2e7d32'; // Green leaf
+          } else {
+            ctx.clearRect(x, y, 1, 1);
+            continue;
+          }
+          break;
+
+        case BlockType.COOKED_PORKCHOP:
+          // Porkchop meat cutout texture!
+          const px = x - 8;
+          const py = y - 8;
+          const isInsidePorkchop = (px >= -5 && px <= 4 && py >= -4 && py <= 5) && 
+                                   !(px === -5 && py === -4) && !(px === 4 && py === 5) &&
+                                   !(px === -5 && py === 5) && !(px === 4 && py === -4);
+          if (isInsidePorkchop) {
+            const isBoneZone = (px === -3 && py === -3) || (px === -4 && py === -3) || (px === -3 && py === -4);
+            if (isBoneZone) {
+              color = '#fdfefe'; // Bone (white)
+            } else {
+              const isPorkchopHighlight = px < -1 && py < -1;
+              const isPorkchopShadow = px > 2 || py > 2;
+              color = isPorkchopHighlight ? highlight : isPorkchopShadow ? shadow : base;
+            }
+          } else {
+            ctx.clearRect(x, y, 1, 1);
+            continue;
+          }
+          break;
+
         default:
           color = base;
           break;
@@ -281,12 +322,32 @@ export function getBlockMaterials(type: BlockType): THREE.Material[] {
   const materials: THREE.Material[] = [];
 
   const createMaterial = (t: THREE.Texture) => {
+    let roughness = 0.85;
+    let metalness = 0.0;
+    
+    if (type === BlockType.DIAMOND_ORE || type === BlockType.GOLD_ORE) {
+      roughness = 0.22;
+      metalness = 0.85;
+    } else if (type === BlockType.IRON_ORE || type === BlockType.COAL_ORE) {
+      roughness = 0.45;
+      metalness = 0.55;
+    } else if (type === BlockType.ICE || type === BlockType.GLASS) {
+      roughness = 0.1;
+      metalness = 0.9;
+    } else if (type === BlockType.WATER) {
+      roughness = 0.05;
+      metalness = 0.3;
+    } else if (type === BlockType.APPLE || type === BlockType.COOKED_PORKCHOP) {
+      roughness = 0.35;
+      metalness = 0.1;
+    }
+
     return new THREE.MeshStandardMaterial({
       map: t,
-      roughness: 0.85,
-      metalness: type === BlockType.GLASS || type === BlockType.ICE ? 0.1 : 0.0,
-      transparent: def.isTransparent || type === BlockType.GLASS || type === BlockType.ICE || type === BlockType.REDWOOD_LEAVES,
-      alphaTest: type === BlockType.LEAVES || type === BlockType.REDWOOD_LEAVES ? 0.1 : 0.0,
+      roughness,
+      metalness,
+      transparent: def.isTransparent || type === BlockType.GLASS || type === BlockType.ICE || type === BlockType.REDWOOD_LEAVES || type === BlockType.WATER || type === BlockType.APPLE || type === BlockType.COOKED_PORKCHOP,
+      alphaTest: type === BlockType.LEAVES || type === BlockType.REDWOOD_LEAVES || type === BlockType.APPLE || type === BlockType.COOKED_PORKCHOP ? 0.05 : 0.0,
       side: THREE.DoubleSide,
     });
   };

@@ -2243,13 +2243,13 @@ export const handleAttackMobs = (
         let dropName = 'Drops';
 
         if (foundMob.type === MobType.SHEEP) {
-          dropType = BlockType.SNOW; // Wool proxy!
+          dropType = BlockType.APPLE;
           dropCount = 2;
-          dropName = 'Fluffy Wool (Snow)';
+          dropName = 'Sweet Apple';
         } else if (foundMob.type === MobType.PIG) {
-          dropType = BlockType.BRICK; // Porkchop proxy!
+          dropType = BlockType.COOKED_PORKCHOP;
           dropCount = 2;
-          dropName = 'Raw Porkchop (Bricks)';
+          dropName = 'Cooked Porkchop';
         } else if (foundMob.type === MobType.ZOMBIE) {
           const rand = Math.random();
           if (rand > 0.85) {
@@ -2307,9 +2307,9 @@ export const handleAttackMobs = (
           dropCount = 2;
           dropName = 'Leather (Pine Log)';
         } else if (foundMob.type === MobType.COW) {
-          dropType = BlockType.PLANKS;
+          dropType = BlockType.COOKED_PORKCHOP;
           dropCount = 2;
-          dropName = 'Leather (Planks)';
+          dropName = 'Beef Steak';
         } else if (foundMob.type === MobType.YAK) {
           dropType = BlockType.SNOW;
           dropCount = 3;
