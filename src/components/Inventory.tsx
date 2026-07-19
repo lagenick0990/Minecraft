@@ -93,6 +93,107 @@ const CRAFTING_RECIPES: CraftingRecipe[] = [
       { type: BlockType.STONE, count: 4 }
     ],
     description: 'Supercompress carbon coal under high stone pressure to synthesize diamond ore!'
+  },
+  {
+    id: 'wooden_pickaxe',
+    name: 'Wooden Pickaxe',
+    outputType: BlockType.WOODEN_PICKAXE,
+    outputCount: 1,
+    ingredients: [
+      { type: BlockType.WOOD, count: 2 },
+      { type: BlockType.PLANKS, count: 3 }
+    ],
+    description: 'An entry-level wood tool. Allows gathering resources with a small bonus chance.'
+  },
+  {
+    id: 'stone_pickaxe',
+    name: 'Stone Pickaxe',
+    outputType: BlockType.STONE_PICKAXE,
+    outputCount: 1,
+    ingredients: [
+      { type: BlockType.WOOD, count: 2 },
+      { type: BlockType.COBBLESTONE, count: 3 }
+    ],
+    description: 'A sturdy cobblestone tool. Provides a 50% chance to yield double resources when mining.'
+  },
+  {
+    id: 'iron_pickaxe',
+    name: 'Iron Pickaxe',
+    outputType: BlockType.IRON_PICKAXE,
+    outputCount: 1,
+    ingredients: [
+      { type: BlockType.WOOD, count: 2 },
+      { type: BlockType.IRON_ORE, count: 3 }
+    ],
+    description: 'A heavy-duty iron tool. Guaranteed to mine double resources (+1 bonus block)!'
+  },
+  {
+    id: 'diamond_pickaxe',
+    name: 'Diamond Pickaxe',
+    outputType: BlockType.DIAMOND_PICKAXE,
+    outputCount: 1,
+    ingredients: [
+      { type: BlockType.WOOD, count: 2 },
+      { type: BlockType.DIAMOND_ORE, count: 3 }
+    ],
+    description: 'The ultimate harvesting tool. Mines triple resources (+2 bonus blocks)!'
+  },
+  {
+    id: 'golden_sword',
+    name: 'Golden Sword',
+    outputType: BlockType.GOLDEN_SWORD,
+    outputCount: 1,
+    ingredients: [
+      { type: BlockType.WOOD, count: 1 },
+      { type: BlockType.GOLD_ORE, count: 2 }
+    ],
+    description: 'A luxurious sword with legendary power. Smites mobs for massive 10 HP damage!'
+  },
+  {
+    id: 'glowing_lantern',
+    name: 'Glowing Lantern',
+    outputType: BlockType.GLOWING_LANTERN,
+    outputCount: 1,
+    ingredients: [
+      { type: BlockType.GLASS, count: 1 },
+      { type: BlockType.COAL_ORE, count: 2 }
+    ],
+    description: 'A luminous amber glass lantern that glows with eternal heat.'
+  },
+  {
+    id: 'reinforced_stone',
+    name: 'Reinforced Stone',
+    outputType: BlockType.REINFORCED_STONE,
+    outputCount: 4,
+    ingredients: [
+      { type: BlockType.STONE, count: 4 },
+      { type: BlockType.IRON_ORE, count: 1 }
+    ],
+    description: 'Steel-clad, high-density stone masonry perfect for fortresses.'
+  },
+  {
+    id: 'iron_block',
+    name: 'Iron Block',
+    outputType: BlockType.IRON_BLOCK,
+    outputCount: 1,
+    ingredients: [{ type: BlockType.IRON_ORE, count: 4 }],
+    description: 'A heavy block made of compressed iron ore veins.'
+  },
+  {
+    id: 'gold_block',
+    name: 'Gold Block',
+    outputType: BlockType.GOLD_BLOCK,
+    outputCount: 1,
+    ingredients: [{ type: BlockType.GOLD_ORE, count: 4 }],
+    description: 'A shimmering block of pure gold ore value.'
+  },
+  {
+    id: 'diamond_block',
+    name: 'Diamond Block',
+    outputType: BlockType.DIAMOND_BLOCK,
+    outputCount: 1,
+    ingredients: [{ type: BlockType.DIAMOND_ORE, count: 4 }],
+    description: 'A highly brilliant cubic block of solid gemstone material.'
   }
 ];
 

@@ -1240,8 +1240,36 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         // Delete from block Map
         worldBlocks.delete(key);
 
-        // Tell parent state to award mined block item to player
-        onBlockMined(minedType);
+        // Calculate tool mining bonuses
+        const activeSlotType = hotbarRef.current[activeHotbarIndexRef.current];
+        let yieldMultiplier = 1;
+
+        if (gameModeRef.current === 'SURVIVAL') {
+          if (activeSlotType === BlockType.DIAMOND_PICKAXE) {
+            yieldMultiplier = 3;
+            addNotification("💎 Diamond Pickaxe extracted 3x resources!", "text-cyan-400 font-extrabold animate-bounce");
+          } else if (activeSlotType === BlockType.IRON_PICKAXE) {
+            yieldMultiplier = 2;
+            addNotification("⚙️ Iron Pickaxe extracted 2x resources!", "text-slate-300 font-bold");
+          } else if (activeSlotType === BlockType.STONE_PICKAXE) {
+            const extra = Math.random() < 0.50;
+            yieldMultiplier = extra ? 2 : 1;
+            if (extra) {
+              addNotification("🪨 Stone Pickaxe gave 2x resources!", "text-neutral-300 font-medium");
+            }
+          } else if (activeSlotType === BlockType.WOODEN_PICKAXE) {
+            const extra = Math.random() < 0.25;
+            yieldMultiplier = extra ? 2 : 1;
+            if (extra) {
+              addNotification("🪵 Wooden Pickaxe gave 2x resources!", "text-amber-500 font-medium");
+            }
+          }
+        }
+
+        // Tell parent state to award mined block item to player (for each multiplied block)
+        for (let i = 0; i < yieldMultiplier; i++) {
+          onBlockMined(minedType);
+        }
 
         // Rebuild rendering meshes
         rebuildInstancedMeshes();
@@ -1306,6 +1334,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       // Check current active hotbar item
       const activeSlotType = hotbarRef.current[activeHotbarIndexRef.current];
       if (!activeSlotType) return; // slot is empty
+
+      // Prevent placing tools as blocks
+      if (
+        activeSlotType === BlockType.WOODEN_PICKAXE ||
+        activeSlotType === BlockType.STONE_PICKAXE ||
+        activeSlotType === BlockType.IRON_PICKAXE ||
+        activeSlotType === BlockType.DIAMOND_PICKAXE ||
+        activeSlotType === BlockType.GOLDEN_SWORD
+      ) {
+        addNotification("⚠️ Cannot place a tool as a physical block!", "text-amber-400 font-bold");
+        return;
+      }
 
       // Survival stock check
       if (gameModeRef.current === 'SURVIVAL') {
@@ -1398,6 +1438,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           };
 
           // Try hitting an active mob first; if missed, fall back to block mining
+          const activeSlotType = hotbarRef.current[activeHotbarIndexRef.current];
           const hitMob = handleAttackMobs(
             mobsList,
             camera,
@@ -1406,7 +1447,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             onBlockMined,
             setStatsProxy as any,
             addNotification,
-            particleBursts
+            particleBursts,
+            activeSlotType
           );
 
           if (!hitMob) {

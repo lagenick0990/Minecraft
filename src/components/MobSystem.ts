@@ -2178,7 +2178,8 @@ export const handleAttackMobs = (
   onBlockMined: (bType: BlockType) => void,
   setStats: React.Dispatch<React.SetStateAction<PlayerStats>>,
   addNotification: (txt: string, col?: string) => void,
-  particleBursts: ParticleBurst[]
+  particleBursts: ParticleBurst[],
+  activeItem?: BlockType | null
 ): boolean => {
   // Raycast forward from camera core
   const raycaster = new THREE.Raycaster();
@@ -2202,8 +2203,25 @@ export const handleAttackMobs = (
     }
 
     if (foundMob) {
-      // Deal 3 damage (out of 8-15)
-      const damage = 3;
+      // Scale damage based on active tool/weapon
+      let damage = 3; // basic hand strike
+      if (activeItem === BlockType.GOLDEN_SWORD) {
+        damage = 12; // Massive damage
+        addNotification("⚔️ Critical strike with Golden Sword! Deal 12 HP damage!", "text-yellow-400 font-extrabold animate-bounce");
+      } else if (activeItem === BlockType.DIAMOND_PICKAXE) {
+        damage = 7;
+        addNotification("⛏️ Struck with Diamond Pickaxe! Deal 7 HP damage.", "text-cyan-400 font-bold");
+      } else if (activeItem === BlockType.IRON_PICKAXE) {
+        damage = 5;
+        addNotification("⛏️ Struck with Iron Pickaxe! Deal 5 HP damage.", "text-slate-300 font-bold");
+      } else if (activeItem === BlockType.STONE_PICKAXE) {
+        damage = 4;
+        addNotification("⛏️ Struck with Stone Pickaxe! Deal 4 HP damage.", "text-neutral-300");
+      } else if (activeItem === BlockType.WOODEN_PICKAXE) {
+        damage = 3.5;
+        addNotification("⛏️ Struck with Wooden Pickaxe! Deal 3.5 HP damage.", "text-amber-600");
+      }
+
       foundMob.health -= damage;
       foundMob.damageFlashTimer = 0.2; // 200ms flash
 
