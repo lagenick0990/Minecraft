@@ -6,7 +6,21 @@ export enum MobType {
   SHEEP = 'SHEEP',
   PIG = 'PIG',
   ZOMBIE = 'ZOMBIE',
-  CREEPER = 'CREEPER'
+  CREEPER = 'CREEPER',
+  BAT = 'BAT',
+  PHANTOM = 'PHANTOM',
+  BIRD = 'BIRD',
+  TIGER = 'TIGER',
+  CHICKEN = 'CHICKEN',
+  FOX = 'FOX',
+  WOLF = 'WOLF',
+  DOG = 'DOG',
+  FROG = 'FROG',
+  HORSE = 'HORSE',
+  COW = 'COW',
+  YAK = 'YAK',
+  VILLAGER = 'VILLAGER',
+  PILLAGER = 'PILLAGER',
 }
 
 export interface Mob {
@@ -349,6 +363,1053 @@ export const createCreeperMesh = (): THREE.Group => {
   return group;
 };
 
+export const createBatMesh = (): THREE.Group => {
+  const group = new THREE.Group();
+  group.name = 'bat';
+
+  const bodyMat = new THREE.MeshStandardMaterial({ color: '#4b382a', roughness: 0.9 });
+  const wingMat = new THREE.MeshStandardMaterial({ color: '#2b1d12', roughness: 0.9 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: '#ff4d4d' });
+
+  // Body
+  const bodyGeo = new THREE.BoxGeometry(0.18, 0.28, 0.18);
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.set(0, 0.4, 0);
+  body.castShadow = true;
+  group.add(body);
+
+  // Head
+  const headGeo = new THREE.BoxGeometry(0.14, 0.14, 0.14);
+  const head = new THREE.Mesh(headGeo, bodyMat);
+  head.position.set(0, 0.21, 0);
+  body.add(head);
+
+  // Ears
+  const earGeo = new THREE.BoxGeometry(0.04, 0.1, 0.04);
+  const leftEar = new THREE.Mesh(earGeo, bodyMat);
+  leftEar.position.set(-0.05, 0.1, 0);
+  leftEar.rotation.z = -0.2;
+  const rightEar = leftEar.clone();
+  rightEar.position.x = 0.05;
+  rightEar.rotation.z = 0.2;
+  head.add(leftEar, rightEar);
+
+  // Eyes
+  const eyeGeo = new THREE.BoxGeometry(0.03, 0.03, 0.03);
+  const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+  leftEye.position.set(-0.04, 0.02, 0.06);
+  const rightEye = leftEye.clone();
+  rightEye.position.x = 0.04;
+  head.add(leftEye, rightEye);
+
+  // Wings (Flapping parts)
+  const wingGeo = new THREE.BoxGeometry(0.3, 0.2, 0.02);
+  const leftWing = new THREE.Mesh(wingGeo, wingMat);
+  leftWing.position.set(-0.21, 0.05, 0);
+  body.add(leftWing);
+
+  const rightWing = new THREE.Mesh(wingGeo, wingMat);
+  rightWing.position.set(0.21, 0.05, 0);
+  body.add(rightWing);
+
+  group.userData = {
+    leftWings: [leftWing],
+    rightWings: [rightWing],
+    head,
+  };
+
+  saveOriginalColors(group);
+  return group;
+};
+
+export const createPhantomMesh = (): THREE.Group => {
+  const group = new THREE.Group();
+  group.name = 'phantom';
+
+  const bodyMat = new THREE.MeshStandardMaterial({ color: '#2b3a67', roughness: 0.8 });
+  const wingMat = new THREE.MeshStandardMaterial({ color: '#1e293b', roughness: 0.8 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: '#10b981' }); // glowing green
+
+  // Flat broad body
+  const bodyGeo = new THREE.BoxGeometry(0.45, 0.1, 0.65);
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.set(0, 0.5, 0);
+  body.castShadow = true;
+  group.add(body);
+
+  // Head
+  const headGeo = new THREE.BoxGeometry(0.2, 0.1, 0.18);
+  const head = new THREE.Mesh(headGeo, bodyMat);
+  head.position.set(0, 0, 0.38);
+  body.add(head);
+
+  // Glowing eyes
+  const eyeGeo = new THREE.BoxGeometry(0.05, 0.04, 0.04);
+  const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+  leftEye.position.set(-0.07, 0.02, 0.08);
+  const rightEye = leftEye.clone();
+  rightEye.position.x = 0.07;
+  head.add(leftEye, rightEye);
+
+  // Long whip tail
+  const tailGeo = new THREE.BoxGeometry(0.06, 0.04, 0.45);
+  const tail = new THREE.Mesh(tailGeo, bodyMat);
+  tail.position.set(0, 0, -0.45);
+  body.add(tail);
+
+  // Huge flapping wings
+  const wingGeo = new THREE.BoxGeometry(0.65, 0.04, 0.35);
+  const leftWing = new THREE.Mesh(wingGeo, wingMat);
+  leftWing.position.set(-0.5, 0, 0.05);
+  body.add(leftWing);
+
+  const rightWing = new THREE.Mesh(wingGeo, wingMat);
+  rightWing.position.set(0.5, 0, 0.05);
+  body.add(rightWing);
+
+  group.userData = {
+    leftWings: [leftWing],
+    rightWings: [rightWing],
+    head,
+  };
+
+  saveOriginalColors(group);
+  return group;
+};
+
+export const createBirdMesh = (): THREE.Group => {
+  const group = new THREE.Group();
+  group.name = 'bird';
+
+  const isBlue = Math.random() > 0.5;
+  const bodyMat = new THREE.MeshStandardMaterial({ color: isBlue ? '#3b82f6' : '#ef4444', roughness: 0.8 });
+  const wingMat = new THREE.MeshStandardMaterial({ color: isBlue ? '#1d4ed8' : '#b91c1c', roughness: 0.8 });
+  const beakMat = new THREE.MeshStandardMaterial({ color: '#f59e0b' });
+  const blackMat = new THREE.MeshStandardMaterial({ color: '#101010' });
+
+  // Body
+  const bodyGeo = new THREE.BoxGeometry(0.18, 0.18, 0.24);
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.set(0, 0.3, 0);
+  body.castShadow = true;
+  group.add(body);
+
+  // Head
+  const headGeo = new THREE.BoxGeometry(0.13, 0.13, 0.13);
+  const head = new THREE.Mesh(headGeo, bodyMat);
+  head.position.set(0, 0.14, 0.06);
+  body.add(head);
+
+  // Beak
+  const beakGeo = new THREE.BoxGeometry(0.04, 0.04, 0.08);
+  const beak = new THREE.Mesh(beakGeo, beakMat);
+  beak.position.set(0, -0.02, 0.09);
+  head.add(beak);
+
+  // Eyes
+  const eyeGeo = new THREE.BoxGeometry(0.03, 0.03, 0.03);
+  const leftEye = new THREE.Mesh(eyeGeo, blackMat);
+  leftEye.position.set(-0.06, 0.02, 0.02);
+  const rightEye = leftEye.clone();
+  rightEye.position.x = 0.06;
+  head.add(leftEye, rightEye);
+
+  // Little wings
+  const wingGeo = new THREE.BoxGeometry(0.03, 0.12, 0.16);
+  const leftWing = new THREE.Mesh(wingGeo, wingMat);
+  leftWing.position.set(-0.1, 0, 0);
+  body.add(leftWing);
+
+  const rightWing = leftWing.clone();
+  rightWing.position.x = 0.1;
+  body.add(rightWing);
+
+  // Tiny tail
+  const tailGeo = new THREE.BoxGeometry(0.08, 0.02, 0.1);
+  const tail = new THREE.Mesh(tailGeo, wingMat);
+  tail.position.set(0, -0.04, -0.15);
+  body.add(tail);
+
+  group.userData = {
+    leftWings: [leftWing],
+    rightWings: [rightWing],
+    head,
+  };
+
+  saveOriginalColors(group);
+  return group;
+};
+
+export const createTigerMesh = (): THREE.Group => {
+  const group = new THREE.Group();
+  group.name = 'tiger';
+
+  const bodyMat = new THREE.MeshStandardMaterial({ color: '#f97316', roughness: 0.8 }); // Orange
+  const stripeMat = new THREE.MeshStandardMaterial({ color: '#1e293b', roughness: 0.85 }); // Black
+  const snoutMat = new THREE.MeshStandardMaterial({ color: '#ffffff' });
+  const noseMat = new THREE.MeshStandardMaterial({ color: '#111827' });
+
+  // Body
+  const bodyGeo = new THREE.BoxGeometry(0.6, 0.55, 1.1);
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.set(0, 0.5, 0);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  group.add(body);
+
+  // Simple black tiger stripe box ornaments embedded on the body
+  const stripeGeo = new THREE.BoxGeometry(0.62, 0.3, 0.06);
+  for (let i = -0.4; i <= 0.4; i += 0.25) {
+    const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+    stripe.position.set(0, 0.1, i);
+    body.add(stripe);
+  }
+
+  // Head
+  const headGeo = new THREE.BoxGeometry(0.38, 0.38, 0.38);
+  const head = new THREE.Mesh(headGeo, bodyMat);
+  head.position.set(0, 0.75, 0.55);
+  head.castShadow = true;
+
+  // Snout
+  const snoutGeo = new THREE.BoxGeometry(0.2, 0.14, 0.12);
+  const snout = new THREE.Mesh(snoutGeo, snoutMat);
+  snout.position.set(0, -0.08, 0.2);
+  head.add(snout);
+
+  const noseGeo = new THREE.BoxGeometry(0.08, 0.06, 0.04);
+  const nose = new THREE.Mesh(noseGeo, noseMat);
+  nose.position.set(0, 0.06, 0.08);
+  snout.add(nose);
+
+  // Ears
+  const earGeo = new THREE.BoxGeometry(0.1, 0.1, 0.06);
+  const leftEar = new THREE.Mesh(earGeo, bodyMat);
+  leftEar.position.set(-0.15, 0.22, -0.05);
+  const rightEar = leftEar.clone();
+  rightEar.position.x = 0.15;
+  head.add(leftEar, rightEar);
+
+  group.add(head);
+
+  // 4 Legs
+  const legGeo = new THREE.BoxGeometry(0.16, 0.4, 0.16);
+  const flLeg = new THREE.Mesh(legGeo, bodyMat);
+  flLeg.position.set(-0.2, 0.2, 0.4);
+  flLeg.castShadow = true;
+
+  const frLeg = flLeg.clone();
+  frLeg.position.x = 0.2;
+
+  const blLeg = flLeg.clone();
+  blLeg.position.z = -0.4;
+
+  const brLeg = frLeg.clone();
+  brLeg.position.z = -0.4;
+
+  group.add(flLeg, frLeg, blLeg, brLeg);
+
+  // Tail
+  const tailGeo = new THREE.BoxGeometry(0.08, 0.08, 0.45);
+  const tail = new THREE.Mesh(tailGeo, bodyMat);
+  tail.position.set(0, 0.2, -0.7);
+  tail.rotation.x = -0.5;
+  body.add(tail);
+
+  group.userData = {
+    leftLegs: [flLeg, brLeg],
+    rightLegs: [frLeg, blLeg],
+    head,
+  };
+
+  saveOriginalColors(group);
+  return group;
+};
+
+export const createChickenMesh = (): THREE.Group => {
+  const group = new THREE.Group();
+  group.name = 'chicken';
+
+  const bodyMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.95 });
+  const beakMat = new THREE.MeshStandardMaterial({ color: '#eab308' });
+  const wattleMat = new THREE.MeshStandardMaterial({ color: '#ef4444' });
+  const legMat = new THREE.MeshStandardMaterial({ color: '#f59e0b' });
+
+  // Body
+  const bodyGeo = new THREE.BoxGeometry(0.35, 0.35, 0.42);
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.set(0, 0.35, 0);
+  body.castShadow = true;
+  group.add(body);
+
+  // Head
+  const headGeo = new THREE.BoxGeometry(0.2, 0.25, 0.2);
+  const head = new THREE.Mesh(headGeo, bodyMat);
+  head.position.set(0, 0.55, 0.14);
+  head.castShadow = true;
+  group.add(head);
+
+  // Beak
+  const beakGeo = new THREE.BoxGeometry(0.1, 0.06, 0.1);
+  const beak = new THREE.Mesh(beakGeo, beakMat);
+  beak.position.set(0, 0.02, 0.12);
+  head.add(beak);
+
+  // Wattle (red throat dangling block)
+  const wattleGeo = new THREE.BoxGeometry(0.06, 0.08, 0.06);
+  const wattle = new THREE.Mesh(wattleGeo, wattleMat);
+  wattle.position.set(0, -0.08, 0.06);
+  head.add(wattle);
+
+  // Thin legs
+  const legGeo = new THREE.BoxGeometry(0.06, 0.22, 0.06);
+  const leftLeg = new THREE.Mesh(legGeo, legMat);
+  leftLeg.position.set(-0.08, 0.11, 0);
+  leftLeg.castShadow = true;
+
+  const rightLeg = leftLeg.clone();
+  rightLeg.position.x = 0.08;
+
+  group.add(leftLeg, rightLeg);
+
+  // Small wings
+  const wingGeo = new THREE.BoxGeometry(0.04, 0.18, 0.24);
+  const leftWing = new THREE.Mesh(wingGeo, bodyMat);
+  leftWing.position.set(-0.19, 0.02, 0);
+  body.add(leftWing);
+
+  const rightWing = leftWing.clone();
+  rightWing.position.x = 0.19;
+  body.add(rightWing);
+
+  group.userData = {
+    leftLegs: [leftLeg],
+    rightLegs: [rightLeg],
+    leftWings: [leftWing],
+    rightWings: [rightWing],
+    head,
+  };
+
+  saveOriginalColors(group);
+  return group;
+};
+
+export const createFoxMesh = (): THREE.Group => {
+  const group = new THREE.Group();
+  group.name = 'fox';
+
+  const orangeMat = new THREE.MeshStandardMaterial({ color: '#ea580c', roughness: 0.8 });
+  const whiteMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.8 });
+  const blackMat = new THREE.MeshStandardMaterial({ color: '#111827' });
+
+  // Body
+  const bodyGeo = new THREE.BoxGeometry(0.35, 0.35, 0.7);
+  const body = new THREE.Mesh(bodyGeo, orangeMat);
+  body.position.set(0, 0.35, 0);
+  body.castShadow = true;
+  group.add(body);
+
+  // Head
+  const headGeo = new THREE.BoxGeometry(0.28, 0.28, 0.28);
+  const head = new THREE.Mesh(headGeo, orangeMat);
+  head.position.set(0, 0.52, 0.35);
+  head.castShadow = true;
+
+  // Snout
+  const snoutGeo = new THREE.BoxGeometry(0.12, 0.1, 0.14);
+  const snout = new THREE.Mesh(snoutGeo, whiteMat);
+  snout.position.set(0, -0.06, 0.16);
+  head.add(snout);
+
+  const noseGeo = new THREE.BoxGeometry(0.06, 0.04, 0.04);
+  const nose = new THREE.Mesh(noseGeo, blackMat);
+  nose.position.set(0, 0.04, 0.08);
+  snout.add(nose);
+
+  // Ears
+  const earGeo = new THREE.BoxGeometry(0.08, 0.1, 0.04);
+  const leftEar = new THREE.Mesh(earGeo, orangeMat);
+  leftEar.position.set(-0.1, 0.16, -0.05);
+  const rightEar = leftEar.clone();
+  rightEar.position.x = 0.1;
+  head.add(leftEar, rightEar);
+
+  group.add(head);
+
+  // 4 Legs
+  const legGeo = new THREE.BoxGeometry(0.1, 0.22, 0.1);
+  const flLeg = new THREE.Mesh(legGeo, orangeMat);
+  flLeg.position.set(-0.11, 0.11, 0.22);
+  flLeg.castShadow = true;
+
+  const frLeg = flLeg.clone();
+  frLeg.position.x = 0.11;
+
+  const blLeg = flLeg.clone();
+  blLeg.position.z = -0.22;
+
+  const brLeg = frLeg.clone();
+  brLeg.position.z = -0.22;
+
+  group.add(flLeg, frLeg, blLeg, brLeg);
+
+  // Bushy fox tail
+  const tailGeo = new THREE.BoxGeometry(0.18, 0.18, 0.35);
+  const tail = new THREE.Mesh(tailGeo, orangeMat);
+  tail.position.set(0, 0.08, -0.42);
+  tail.rotation.x = -0.4;
+  body.add(tail);
+
+  // White tip on tail
+  const tipGeo = new THREE.BoxGeometry(0.18, 0.18, 0.1);
+  const tip = new THREE.Mesh(tipGeo, whiteMat);
+  tip.position.set(0, 0, -0.18);
+  tail.add(tip);
+
+  group.userData = {
+    leftLegs: [flLeg, brLeg],
+    rightLegs: [frLeg, blLeg],
+    head,
+  };
+
+  saveOriginalColors(group);
+  return group;
+};
+
+export const createWolfMesh = (): THREE.Group => {
+  const group = new THREE.Group();
+  group.name = 'wolf';
+
+  const greyMat = new THREE.MeshStandardMaterial({ color: '#94a3b8', roughness: 0.85 });
+  const snoutMat = new THREE.MeshStandardMaterial({ color: '#cbd5e1' });
+  const blackMat = new THREE.MeshStandardMaterial({ color: '#1e293b' });
+
+  // Body
+  const bodyGeo = new THREE.BoxGeometry(0.42, 0.42, 0.8);
+  const body = new THREE.Mesh(bodyGeo, greyMat);
+  body.position.set(0, 0.42, 0);
+  body.castShadow = true;
+  group.add(body);
+
+  // Head
+  const headGeo = new THREE.BoxGeometry(0.26, 0.26, 0.26);
+  const head = new THREE.Mesh(headGeo, greyMat);
+  head.position.set(0, 0.62, 0.4);
+  head.castShadow = true;
+
+  // Snout
+  const snoutGeo = new THREE.BoxGeometry(0.12, 0.1, 0.12);
+  const snout = new THREE.Mesh(snoutGeo, snoutMat);
+  snout.position.set(0, -0.05, 0.15);
+  head.add(snout);
+
+  const noseGeo = new THREE.BoxGeometry(0.06, 0.04, 0.04);
+  const nose = new THREE.Mesh(noseGeo, blackMat);
+  nose.position.set(0, 0.04, 0.07);
+  snout.add(nose);
+
+  // Ears
+  const earGeo = new THREE.BoxGeometry(0.06, 0.08, 0.04);
+  const leftEar = new THREE.Mesh(earGeo, greyMat);
+  leftEar.position.set(-0.09, 0.14, -0.04);
+  const rightEar = leftEar.clone();
+  rightEar.position.x = 0.09;
+  head.add(leftEar, rightEar);
+
+  group.add(head);
+
+  // 4 Legs
+  const legGeo = new THREE.BoxGeometry(0.12, 0.28, 0.12);
+  const flLeg = new THREE.Mesh(legGeo, greyMat);
+  flLeg.position.set(-0.13, 0.14, 0.25);
+  flLeg.castShadow = true;
+
+  const frLeg = flLeg.clone();
+  frLeg.position.x = 0.13;
+
+  const blLeg = flLeg.clone();
+  blLeg.position.z = -0.25;
+
+  const brLeg = frLeg.clone();
+  brLeg.position.z = -0.25;
+
+  group.add(flLeg, frLeg, blLeg, brLeg);
+
+  // Tail
+  const tailGeo = new THREE.BoxGeometry(0.1, 0.1, 0.3);
+  const tail = new THREE.Mesh(tailGeo, greyMat);
+  tail.position.set(0, 0.12, -0.45);
+  tail.rotation.x = -0.6;
+  body.add(tail);
+
+  group.userData = {
+    leftLegs: [flLeg, brLeg],
+    rightLegs: [frLeg, blLeg],
+    head,
+  };
+
+  saveOriginalColors(group);
+  return group;
+};
+
+export const createDogMesh = (): THREE.Group => {
+  // Dog is a Wolf but with brown coat and a bright RED collar!
+  const group = new THREE.Group();
+  group.name = 'dog';
+
+  const brownMat = new THREE.MeshStandardMaterial({ color: '#d97706', roughness: 0.85 }); // light golden brown
+  const snoutMat = new THREE.MeshStandardMaterial({ color: '#f59e0b' });
+  const redCollarMat = new THREE.MeshStandardMaterial({ color: '#dc2626', roughness: 0.7 }); // bright red collar!
+  const blackMat = new THREE.MeshStandardMaterial({ color: '#1e293b' });
+
+  // Body
+  const bodyGeo = new THREE.BoxGeometry(0.4, 0.4, 0.78);
+  const body = new THREE.Mesh(bodyGeo, brownMat);
+  body.position.set(0, 0.4, 0);
+  body.castShadow = true;
+  group.add(body);
+
+  // Red Collar!
+  const collarGeo = new THREE.BoxGeometry(0.42, 0.1, 0.42);
+  const collar = new THREE.Mesh(collarGeo, redCollarMat);
+  collar.position.set(0, 0.15, 0.35);
+  body.add(collar);
+
+  // Head
+  const headGeo = new THREE.BoxGeometry(0.24, 0.24, 0.24);
+  const head = new THREE.Mesh(headGeo, brownMat);
+  head.position.set(0, 0.6, 0.4);
+  head.castShadow = true;
+
+  // Snout
+  const snoutGeo = new THREE.BoxGeometry(0.12, 0.08, 0.12);
+  const snout = new THREE.Mesh(snoutGeo, snoutMat);
+  snout.position.set(0, -0.05, 0.14);
+  head.add(snout);
+
+  const noseGeo = new THREE.BoxGeometry(0.06, 0.04, 0.04);
+  const nose = new THREE.Mesh(noseGeo, blackMat);
+  nose.position.set(0, 0.03, 0.07);
+  snout.add(nose);
+
+  // Ears (floppy dog ears!)
+  const earGeo = new THREE.BoxGeometry(0.04, 0.12, 0.06);
+  const leftEar = new THREE.Mesh(earGeo, brownMat);
+  leftEar.position.set(-0.11, 0.05, -0.02);
+  leftEar.rotation.z = 0.15;
+  const rightEar = leftEar.clone();
+  rightEar.position.x = 0.11;
+  rightEar.rotation.z = -0.15;
+  head.add(leftEar, rightEar);
+
+  group.add(head);
+
+  // 4 Legs
+  const legGeo = new THREE.BoxGeometry(0.11, 0.26, 0.11);
+  const flLeg = new THREE.Mesh(legGeo, brownMat);
+  flLeg.position.set(-0.12, 0.13, 0.24);
+  flLeg.castShadow = true;
+
+  const frLeg = flLeg.clone();
+  frLeg.position.x = 0.12;
+
+  const blLeg = flLeg.clone();
+  blLeg.position.z = -0.24;
+
+  const brLeg = frLeg.clone();
+  brLeg.position.z = -0.24;
+
+  group.add(flLeg, frLeg, blLeg, brLeg);
+
+  // Happy wagging tail
+  const tailGeo = new THREE.BoxGeometry(0.08, 0.08, 0.28);
+  const tail = new THREE.Mesh(tailGeo, brownMat);
+  tail.position.set(0, 0.1, -0.42);
+  tail.rotation.x = -0.5;
+  body.add(tail);
+
+  group.userData = {
+    leftLegs: [flLeg, brLeg],
+    rightLegs: [frLeg, blLeg],
+    head,
+    tail, // wag it!
+  };
+
+  saveOriginalColors(group);
+  return group;
+};
+
+export const createFrogMesh = (): THREE.Group => {
+  const group = new THREE.Group();
+  group.name = 'frog';
+
+  const greenMat = new THREE.MeshStandardMaterial({ color: '#22c55e', roughness: 0.9 });
+  const yellowMat = new THREE.MeshStandardMaterial({ color: '#facc15' }); // pale yellow underbelly
+  const eyeMat = new THREE.MeshStandardMaterial({ color: '#f97316' }); // orange bulging eyes
+  const blackMat = new THREE.MeshStandardMaterial({ color: '#111827' });
+
+  // Squatty body
+  const bodyGeo = new THREE.BoxGeometry(0.32, 0.24, 0.35);
+  const body = new THREE.Mesh(bodyGeo, greenMat);
+  body.position.set(0, 0.15, 0);
+  body.castShadow = true;
+  group.add(body);
+
+  // Underbelly
+  const bellyGeo = new THREE.BoxGeometry(0.24, 0.04, 0.28);
+  const belly = new THREE.Mesh(bellyGeo, yellowMat);
+  belly.position.set(0, -0.11, 0);
+  body.add(belly);
+
+  // Bulging eyes on top of the head/body
+  const eyeHolderGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
+  const leftEyeHolder = new THREE.Mesh(eyeHolderGeo, greenMat);
+  leftEyeHolder.position.set(-0.1, 0.14, 0.08);
+  body.add(leftEyeHolder);
+
+  const rightEyeHolder = leftEyeHolder.clone();
+  rightEyeHolder.position.x = 0.1;
+  body.add(rightEyeHolder);
+
+  const eyeGeo = new THREE.BoxGeometry(0.05, 0.05, 0.05);
+  const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+  leftEye.position.set(0, 0.02, 0.03);
+  leftEyeHolder.add(leftEye);
+
+  const leftPupil = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.01), blackMat);
+  leftPupil.position.set(0, 0, 0.031);
+  leftEye.add(leftPupil);
+
+  const rightEye = leftEye.clone();
+  rightEyeHolder.add(rightEye);
+
+  // Legs
+  const legGeo = new THREE.BoxGeometry(0.1, 0.1, 0.18);
+  const flLeg = new THREE.Mesh(legGeo, greenMat);
+  flLeg.position.set(-0.16, -0.06, 0.08);
+  body.add(flLeg);
+
+  const frLeg = flLeg.clone();
+  frLeg.position.x = 0.16;
+  body.add(frLeg);
+
+  // Large folded back legs
+  const backLegGeo = new THREE.BoxGeometry(0.12, 0.16, 0.24);
+  const blLeg = new THREE.Mesh(backLegGeo, greenMat);
+  blLeg.position.set(-0.17, -0.03, -0.08);
+  blLeg.rotation.z = -0.2;
+  body.add(blLeg);
+
+  const brLeg = blLeg.clone();
+  brLeg.position.x = 0.17;
+  brLeg.rotation.z = 0.2;
+  body.add(brLeg);
+
+  group.userData = {
+    leftLegs: [flLeg, brLeg],
+    rightLegs: [frLeg, blLeg],
+  };
+
+  saveOriginalColors(group);
+  return group;
+};
+
+export const createHorseMesh = (): THREE.Group => {
+  const group = new THREE.Group();
+  group.name = 'horse';
+
+  const bodyMat = new THREE.MeshStandardMaterial({ color: '#78350f', roughness: 0.8 }); // chestnut brown
+  const hairMat = new THREE.MeshStandardMaterial({ color: '#1e293b', roughness: 0.9 }); // black mane/tail
+  const hoofMat = new THREE.MeshStandardMaterial({ color: '#451a03' });
+
+  // Large Body
+  const bodyGeo = new THREE.BoxGeometry(0.8, 0.75, 1.4);
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.set(0, 0.85, 0);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  group.add(body);
+
+  // Neck rising up
+  const neckGeo = new THREE.BoxGeometry(0.3, 0.65, 0.35);
+  const neck = new THREE.Mesh(neckGeo, bodyMat);
+  neck.position.set(0, 0.5, 0.55);
+  neck.rotation.x = -0.4;
+  neck.castShadow = true;
+  body.add(neck);
+
+  // Mane hair on back of neck
+  const maneGeo = new THREE.BoxGeometry(0.1, 0.55, 0.15);
+  const mane = new THREE.Mesh(maneGeo, hairMat);
+  mane.position.set(0, 0.05, -0.18);
+  neck.add(mane);
+
+  // Head
+  const headGeo = new THREE.BoxGeometry(0.28, 0.28, 0.5);
+  const head = new THREE.Mesh(headGeo, bodyMat);
+  head.position.set(0, 0.3, 0.15);
+  head.rotation.x = 0.5;
+  neck.add(head);
+
+  // Ears
+  const earGeo = new THREE.BoxGeometry(0.06, 0.12, 0.06);
+  const leftEar = new THREE.Mesh(earGeo, bodyMat);
+  leftEar.position.set(-0.1, 0.16, -0.1);
+  const rightEar = leftEar.clone();
+  rightEar.position.x = 0.1;
+  head.add(leftEar, rightEar);
+
+  // 4 Long Legs
+  const legGeo = new THREE.BoxGeometry(0.18, 0.65, 0.18);
+  const flLeg = new THREE.Mesh(legGeo, bodyMat);
+  flLeg.position.set(-0.25, 0.325, 0.45);
+  flLeg.castShadow = true;
+
+  // Hoof bottom
+  const hoofGeo = new THREE.BoxGeometry(0.19, 0.1, 0.19);
+  const flHoof = new THREE.Mesh(hoofGeo, hoofMat);
+  flHoof.position.set(0, -0.3, 0);
+  flLeg.add(flHoof);
+
+  const frLeg = flLeg.clone();
+  frLeg.position.x = 0.25;
+
+  const blLeg = flLeg.clone();
+  blLeg.position.z = -0.45;
+
+  const brLeg = frLeg.clone();
+  brLeg.position.z = -0.45;
+
+  group.add(flLeg, frLeg, blLeg, brLeg);
+
+  // Tail
+  const tailGeo = new THREE.BoxGeometry(0.12, 0.65, 0.12);
+  const tail = new THREE.Mesh(tailGeo, hairMat);
+  tail.position.set(0, 0.1, -0.75);
+  tail.rotation.x = 0.2;
+  body.add(tail);
+
+  group.userData = {
+    leftLegs: [flLeg, brLeg],
+    rightLegs: [frLeg, blLeg],
+    head,
+  };
+
+  saveOriginalColors(group);
+  return group;
+};
+
+export const createCowMesh = (): THREE.Group => {
+  const group = new THREE.Group();
+  group.name = 'cow';
+
+  const bodyMat = new THREE.MeshStandardMaterial({ color: '#3d251d', roughness: 0.85 }); // brown/black base
+  const spotMat = new THREE.MeshStandardMaterial({ color: '#f3f4f6', roughness: 0.85 }); // white spots
+  const hornMat = new THREE.MeshStandardMaterial({ color: '#e2e8f0' });
+  const udderMat = new THREE.MeshStandardMaterial({ color: '#fda4af' }); // pink udders!
+
+  // Large chunky body
+  const bodyGeo = new THREE.BoxGeometry(0.85, 0.8, 1.3);
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.set(0, 0.8, 0);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  group.add(body);
+
+  // Large white spot plates embedded
+  const spotGeo = new THREE.BoxGeometry(0.87, 0.4, 0.45);
+  const spot1 = new THREE.Mesh(spotGeo, spotMat);
+  spot1.position.set(0, 0.1, 0.25);
+  body.add(spot1);
+
+  const spot2 = new THREE.Mesh(spotGeo, spotMat);
+  spot2.position.set(0, -0.1, -0.35);
+  body.add(spot2);
+
+  // Pink Udder under the belly!
+  const udderGeo = new THREE.BoxGeometry(0.18, 0.12, 0.24);
+  const udder = new THREE.Mesh(udderGeo, udderMat);
+  udder.position.set(0, -0.42, -0.1);
+  body.add(udder);
+
+  // Head
+  const headGeo = new THREE.BoxGeometry(0.38, 0.38, 0.38);
+  const head = new THREE.Mesh(headGeo, bodyMat);
+  head.position.set(0, 1.05, 0.55);
+  head.castShadow = true;
+
+  // Horns
+  const hornGeo = new THREE.BoxGeometry(0.08, 0.14, 0.08);
+  const leftHorn = new THREE.Mesh(hornGeo, hornMat);
+  leftHorn.position.set(-0.21, 0.16, -0.05);
+  leftHorn.rotation.z = -0.4;
+  const rightHorn = leftHorn.clone();
+  rightHorn.position.x = 0.21;
+  rightHorn.rotation.z = 0.4;
+  head.add(leftHorn, rightHorn);
+
+  group.add(head);
+
+  // 4 Stocky legs
+  const legGeo = new THREE.BoxGeometry(0.2, 0.48, 0.2);
+  const flLeg = new THREE.Mesh(legGeo, bodyMat);
+  flLeg.position.set(-0.26, 0.24, 0.4);
+  flLeg.castShadow = true;
+
+  const frLeg = flLeg.clone();
+  frLeg.position.x = 0.26;
+
+  const blLeg = flLeg.clone();
+  blLeg.position.z = -0.4;
+
+  const brLeg = frLeg.clone();
+  brLeg.position.z = -0.4;
+
+  group.add(flLeg, frLeg, blLeg, brLeg);
+
+  group.userData = {
+    leftLegs: [flLeg, brLeg],
+    rightLegs: [frLeg, blLeg],
+    head,
+  };
+
+  saveOriginalColors(group);
+  return group;
+};
+
+export const createYakMesh = (): THREE.Group => {
+  const group = new THREE.Group();
+  group.name = 'yak';
+
+  const woolMat = new THREE.MeshStandardMaterial({ color: '#2d1500', roughness: 0.98 }); // ultra shaggy deep brown
+  const skinMat = new THREE.MeshStandardMaterial({ color: '#451a03', roughness: 0.9 });
+  const hornMat = new THREE.MeshStandardMaterial({ color: '#e2e8f0', roughness: 0.8 }); // big white horns
+
+  // Body
+  const bodyGeo = new THREE.BoxGeometry(0.95, 0.9, 1.45);
+  const body = new THREE.Mesh(bodyGeo, woolMat);
+  body.position.set(0, 0.85, 0);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  group.add(body);
+
+  // Shaggy fringe skirt dangling down
+  const skirtGeo = new THREE.BoxGeometry(0.97, 0.25, 1.47);
+  const skirt = new THREE.Mesh(skirtGeo, woolMat);
+  skirt.position.set(0, -0.38, 0);
+  body.add(skirt);
+
+  // Massive wooly hump
+  const humpGeo = new THREE.BoxGeometry(0.8, 0.22, 0.6);
+  const hump = new THREE.Mesh(humpGeo, woolMat);
+  hump.position.set(0, 0.52, 0.25);
+  body.add(hump);
+
+  // Head
+  const headGeo = new THREE.BoxGeometry(0.42, 0.42, 0.42);
+  const head = new THREE.Mesh(headGeo, skinMat);
+  head.position.set(0, 1.05, 0.65);
+  head.castShadow = true;
+
+  // Huge curled curved horns
+  // Base segment
+  const hornGeo = new THREE.BoxGeometry(0.12, 0.12, 0.3);
+  const leftHornBase = new THREE.Mesh(hornGeo, hornMat);
+  leftHornBase.position.set(-0.25, 0.1, 0.05);
+  leftHornBase.rotation.y = -0.5;
+  head.add(leftHornBase);
+
+  const leftHornTip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.2, 0.08), hornMat);
+  leftHornTip.position.set(-0.06, 0.12, 0.1);
+  leftHornTip.rotation.z = 0.5;
+  leftHornBase.add(leftHornTip);
+
+  const rightHornBase = new THREE.Mesh(hornGeo, hornMat);
+  rightHornBase.position.set(0.25, 0.1, 0.05);
+  rightHornBase.rotation.y = 0.5;
+  head.add(rightHornBase);
+
+  const rightHornTip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.2, 0.08), hornMat);
+  rightHornTip.position.set(0.06, 0.12, 0.1);
+  rightHornTip.rotation.z = -0.5;
+  rightHornBase.add(rightHornTip);
+
+  group.add(head);
+
+  // 4 Stocky legs (shorter due to shaggy skirt)
+  const legGeo = new THREE.BoxGeometry(0.24, 0.45, 0.24);
+  const flLeg = new THREE.Mesh(legGeo, skinMat);
+  flLeg.position.set(-0.28, 0.225, 0.45);
+  flLeg.castShadow = true;
+
+  const frLeg = flLeg.clone();
+  frLeg.position.x = 0.28;
+
+  const blLeg = flLeg.clone();
+  blLeg.position.z = -0.45;
+
+  const brLeg = frLeg.clone();
+  brLeg.position.z = -0.45;
+
+  group.add(flLeg, frLeg, blLeg, brLeg);
+
+  group.userData = {
+    leftLegs: [flLeg, brLeg],
+    rightLegs: [frLeg, blLeg],
+    head,
+  };
+
+  saveOriginalColors(group);
+  return group;
+};
+
+export const createVillagerMesh = (): THREE.Group => {
+  const group = new THREE.Group();
+  group.name = 'villager';
+
+  const robeMat = new THREE.MeshStandardMaterial({ color: '#7c2d12', roughness: 0.9 }); // brown robe
+  const skinMat = new THREE.MeshStandardMaterial({ color: '#ffd3b6', roughness: 0.8 });
+  const noseMat = new THREE.MeshStandardMaterial({ color: '#e0a982', roughness: 0.8 });
+  const blackMat = new THREE.MeshStandardMaterial({ color: '#1a1a1a' });
+
+  // Tall Robe Body
+  const bodyGeo = new THREE.BoxGeometry(0.45, 1.1, 0.45);
+  const body = new THREE.Mesh(bodyGeo, robeMat);
+  body.position.set(0, 0.8, 0);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  group.add(body);
+
+  // Head
+  const headGeo = new THREE.BoxGeometry(0.38, 0.45, 0.38);
+  const head = new THREE.Mesh(headGeo, skinMat);
+  head.position.set(0, 1.5, 0);
+  head.castShadow = true;
+  group.add(head);
+
+  // Huge Nose block!
+  const noseGeo = new THREE.BoxGeometry(0.1, 0.22, 0.12);
+  const nose = new THREE.Mesh(noseGeo, noseMat);
+  nose.position.set(0, -0.06, 0.23);
+  head.add(nose);
+
+  // Eyes (monobrow/villager style)
+  const eyeGeo = new THREE.BoxGeometry(0.06, 0.06, 0.04);
+  const leftEye = new THREE.Mesh(eyeGeo, blackMat);
+  leftEye.position.set(-0.09, 0.08, 0.19);
+  const rightEye = leftEye.clone();
+  rightEye.position.x = 0.09;
+  head.add(leftEye, rightEye);
+
+  // Uni-brow!
+  const browGeo = new THREE.BoxGeometry(0.26, 0.04, 0.04);
+  const brow = new THREE.Mesh(browGeo, blackMat);
+  brow.position.set(0, 0.13, 0.195);
+  head.add(brow);
+
+  // Crossed arms (single horizontal box bar!)
+  const armsGeo = new THREE.BoxGeometry(0.55, 0.18, 0.22);
+  const arms = new THREE.Mesh(armsGeo, robeMat);
+  arms.position.set(0, 0.1, 0.28);
+  body.add(arms);
+
+  // Two legs
+  const legGeo = new THREE.BoxGeometry(0.16, 0.35, 0.16);
+  const leftLeg = new THREE.Mesh(legGeo, robeMat);
+  leftLeg.position.set(-0.11, 0.175, 0);
+  leftLeg.castShadow = true;
+
+  const rightLeg = leftLeg.clone();
+  rightLeg.position.x = 0.11;
+
+  group.add(leftLeg, rightLeg);
+
+  group.userData = {
+    leftLegs: [leftLeg],
+    rightLegs: [rightLeg],
+    head,
+  };
+
+  saveOriginalColors(group);
+  return group;
+};
+
+export const createPillagerMesh = (): THREE.Group => {
+  const group = new THREE.Group();
+  group.name = 'pillager';
+
+  const skinMat = new THREE.MeshStandardMaterial({ color: '#94a3b8', roughness: 0.8 }); // Grey skin
+  const coatMat = new THREE.MeshStandardMaterial({ color: '#334155', roughness: 0.85 }); // dark grey coat
+  const trimMat = new THREE.MeshStandardMaterial({ color: '#7c2d12' }); // leather brown boots/shoulder
+  const woodMat = new THREE.MeshStandardMaterial({ color: '#b45309' }); // wooden crossbow
+
+  // Body
+  const bodyGeo = new THREE.BoxGeometry(0.45, 1.05, 0.42);
+  const body = new THREE.Mesh(bodyGeo, coatMat);
+  body.position.set(0, 0.775, 0);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  group.add(body);
+
+  // Head
+  const headGeo = new THREE.BoxGeometry(0.38, 0.42, 0.38);
+  const head = new THREE.Mesh(headGeo, skinMat);
+  head.position.set(0, 1.45, 0);
+  head.castShadow = true;
+  group.add(head);
+
+  // Nose
+  const noseGeo = new THREE.BoxGeometry(0.1, 0.2, 0.1);
+  const nose = new THREE.Mesh(noseGeo, skinMat);
+  nose.position.set(0, -0.05, 0.22);
+  head.add(nose);
+
+  // Crossed Arms or Extended Arm with Crossbow! Let's extend one arm out with a crossbow!
+  const armGeo = new THREE.BoxGeometry(0.15, 0.6, 0.15);
+  const leftArm = new THREE.Mesh(armGeo, coatMat);
+  leftArm.position.set(-0.3, 1.05, 0);
+  leftArm.castShadow = true;
+  group.add(leftArm);
+
+  // Right arm extended forward holding crossbow
+  const rightArm = new THREE.Mesh(armGeo, coatMat);
+  rightArm.position.set(0.3, 1.05, 0.25);
+  rightArm.rotation.x = -Math.PI / 2.2;
+  rightArm.castShadow = true;
+  group.add(rightArm);
+
+  // Voxel Crossbow attached to right hand
+  const crossbowGeo = new THREE.BoxGeometry(0.1, 0.1, 0.45);
+  const crossbow = new THREE.Mesh(crossbowGeo, woodMat);
+  crossbow.position.set(0, -0.28, 0.15);
+  rightArm.add(crossbow);
+
+  const crossbarGeo = new THREE.BoxGeometry(0.42, 0.04, 0.08);
+  const crossbar = new THREE.Mesh(crossbarGeo, woodMat);
+  crossbar.position.set(0, 0, 0.12);
+  crossbow.add(crossbar);
+
+  // Legs
+  const legGeo = new THREE.BoxGeometry(0.16, 0.6, 0.16);
+  const leftLeg = new THREE.Mesh(legGeo, trimMat);
+  leftLeg.position.set(-0.11, 0.3, 0);
+  leftLeg.castShadow = true;
+
+  const rightLeg = leftLeg.clone();
+  rightLeg.position.x = 0.11;
+
+  group.add(leftLeg, rightLeg);
+
+  group.userData = {
+    leftLegs: [leftLeg],
+    rightLegs: [rightLeg],
+    head,
+  };
+
+  saveOriginalColors(group);
+  return group;
+};
+
 // --- AUDIO HELPERS FOR MOBS ---
 
 export const playMobSound = (
@@ -650,6 +1711,90 @@ export const spawnMobProcedural = (
       height = 1.7;
       width = 0.55;
       break;
+    case MobType.BAT:
+      group = createBatMesh();
+      health = 4;
+      height = 0.5;
+      width = 0.4;
+      break;
+    case MobType.PHANTOM:
+      group = createPhantomMesh();
+      health = 12;
+      height = 0.6;
+      width = 1.0;
+      break;
+    case MobType.BIRD:
+      group = createBirdMesh();
+      health = 4;
+      height = 0.4;
+      width = 0.3;
+      break;
+    case MobType.TIGER:
+      group = createTigerMesh();
+      health = 18;
+      height = 1.0;
+      width = 0.8;
+      break;
+    case MobType.CHICKEN:
+      group = createChickenMesh();
+      health = 4;
+      height = 0.6;
+      width = 0.45;
+      break;
+    case MobType.FOX:
+      group = createFoxMesh();
+      health = 8;
+      height = 0.7;
+      width = 0.5;
+      break;
+    case MobType.WOLF:
+      group = createWolfMesh();
+      health = 10;
+      height = 0.8;
+      width = 0.55;
+      break;
+    case MobType.DOG:
+      group = createDogMesh();
+      health = 12;
+      height = 0.8;
+      width = 0.55;
+      break;
+    case MobType.FROG:
+      group = createFrogMesh();
+      health = 6;
+      height = 0.45;
+      width = 0.45;
+      break;
+    case MobType.HORSE:
+      group = createHorseMesh();
+      health = 20;
+      height = 1.5;
+      width = 0.85;
+      break;
+    case MobType.COW:
+      group = createCowMesh();
+      health = 12;
+      height = 1.3;
+      width = 0.85;
+      break;
+    case MobType.YAK:
+      group = createYakMesh();
+      health = 22;
+      height = 1.4;
+      width = 0.95;
+      break;
+    case MobType.VILLAGER:
+      group = createVillagerMesh();
+      health = 20;
+      height = 1.95;
+      width = 0.5;
+      break;
+    case MobType.PILLAGER:
+      group = createPillagerMesh();
+      health = 24;
+      height = 1.95;
+      width = 0.5;
+      break;
   }
 
   group.position.set(spawnX, spawnY, spawnZ);
@@ -821,7 +1966,7 @@ export const updateMobs = (
       mob.velocity.z = runDir.z * speed;
     } else {
       // HOSTILE aggro check
-      const isHostile = mob.type === MobType.ZOMBIE || mob.type === MobType.CREEPER;
+      const isHostile = mob.type === MobType.ZOMBIE || mob.type === MobType.CREEPER || mob.type === MobType.PILLAGER;
       if (isHostile && distToPlayer < 15 && gameMode === 'SURVIVAL') {
         mob.state = 'CHASING';
       } else if (mob.state === 'CHASING' && (distToPlayer > 18 || gameMode === 'CREATIVE')) {
@@ -835,7 +1980,7 @@ export const updateMobs = (
         chaseDir.y = 0;
         chaseDir.normalize();
 
-        const speed = mob.type === MobType.ZOMBIE ? 2.5 : 2.8;
+        const speed = mob.type === MobType.ZOMBIE ? 2.5 : mob.type === MobType.PILLAGER ? 3.0 : 2.8;
         mob.velocity.x = chaseDir.x * speed;
         mob.velocity.z = chaseDir.z * speed;
 
@@ -851,6 +1996,18 @@ export const updateMobs = (
             onUpdateStats({ health: Math.max(0, stats.health - ZOMBIE_ATTACK_DAMAGE) });
             playMobSound('hit', soundEnabled);
             addNotification(`🧟 Zombie bit you! Took 1 heart of damage!`, 'text-red-400');
+            triggerPlayerHitFlash();
+          }
+        }
+
+        // Pillager attack trigger (crossbow arrow damage)
+        if (mob.type === MobType.PILLAGER && distToPlayer < 1.6 && gameMode === 'SURVIVAL') {
+          const now = currentTime;
+          if (now - (window as any)._zombieLastBite > ZOMBIE_ATTACK_COOLDOWN * 1000) {
+            (window as any)._zombieLastBite = now;
+            onUpdateStats({ health: Math.max(0, stats.health - 3.0) }); // 1.5 hearts
+            playMobSound('hit', soundEnabled);
+            addNotification(`🏹 Pillager shot you with crossbow! Took 1.5 hearts of damage!`, 'text-red-500 font-extrabold');
             triggerPlayerHitFlash();
           }
         }
@@ -901,9 +2058,24 @@ export const updateMobs = (
       }
     }
 
-    // 3. APPLY GRAVITY
-    mob.velocity.y -= GRAVITY * dt;
-    if (mob.velocity.y < -30) mob.velocity.y = -30;
+    // 3. APPLY GRAVITY & FLOATING
+    const isFlying = mob.type === MobType.BAT || mob.type === MobType.PHANTOM || mob.type === MobType.BIRD;
+    if (isFlying) {
+      // Gentle floating sine wave bobbing in mid-air
+      mob.velocity.y = Math.sin(currentTime * 0.003 + (mob.position.x * 0.05)) * 0.4;
+    } else {
+      mob.velocity.y -= GRAVITY * dt;
+      if (mob.velocity.y < -30) mob.velocity.y = -30;
+    }
+
+    // Frog Hop automatic movement trigger
+    if (mob.type === MobType.FROG && mob.isGrounded && Math.random() < 0.04) {
+      mob.velocity.y = 4.2;
+      mob.isGrounded = false;
+      const angle = mob.group.rotation.y;
+      mob.velocity.x = Math.sin(angle) * 3.5;
+      mob.velocity.z = Math.cos(angle) * 3.5;
+    }
 
     // 4. STEP-BY-STEP COLLISION PHYSICS
     const tempPos = mob.position.clone();
@@ -954,26 +2126,41 @@ export const updateMobs = (
       tempPos.y = mob.position.y;
     } else {
       mob.position.y = tempPos.y;
-      mob.isGrounded = false;
+      if (!isFlying) mob.isGrounded = false;
     }
 
     // Jump automatic step over walls!
-    if (collidedHorizontally && mob.isGrounded) {
+    if (collidedHorizontally && mob.isGrounded && !isFlying) {
       mob.velocity.y = 5.2; // jump height
       mob.isGrounded = false;
     }
 
-    // 5. ANIMATIONS (Swing legs)
+    // 5. ANIMATIONS (Swing legs / Flap wings)
     const horizSpeed = Math.hypot(mob.velocity.x, mob.velocity.z);
-    if (horizSpeed > 0.2) {
+    if (isFlying) {
+      const flap = Math.sin(currentTime * 0.016) * 0.7;
+      if (mob.group.userData.leftWings) {
+        mob.group.userData.leftWings.forEach((w: any) => { w.rotation.z = flap; });
+      }
+      if (mob.group.userData.rightWings) {
+        mob.group.userData.rightWings.forEach((w: any) => { w.rotation.z = -flap; });
+      }
+    } else if (horizSpeed > 0.2) {
       const swingSpeed = mob.state === 'FLEEING' ? 14 : 9;
       const swingAngle = Math.sin(currentTime * 0.001 * swingSpeed) * 0.55;
-      mob.leftLegs.forEach((leg) => leg.rotation.x = swingAngle);
-      mob.rightLegs.forEach((leg) => leg.rotation.x = -swingAngle);
+      mob.leftLegs.forEach((leg) => { leg.rotation.x = swingAngle; });
+      mob.rightLegs.forEach((leg) => { leg.rotation.x = -swingAngle; });
+
+      if (mob.type === MobType.DOG && mob.group.userData.tail) {
+        mob.group.userData.tail.rotation.y = Math.sin(currentTime * 0.015) * 0.45;
+      }
     } else {
       // Return legs to neutral resting position
-      mob.leftLegs.forEach((leg) => leg.rotation.x *= 0.85);
-      mob.rightLegs.forEach((leg) => leg.rotation.x *= 0.85);
+      mob.leftLegs.forEach((leg) => { leg.rotation.x *= 0.85; });
+      mob.rightLegs.forEach((leg) => { leg.rotation.x *= 0.85; });
+      if (mob.type === MobType.DOG && mob.group.userData.tail) {
+        mob.group.userData.tail.rotation.y *= 0.85;
+      }
     }
 
     // Render group adjustment
@@ -1056,15 +2243,14 @@ export const handleAttackMobs = (
         let dropName = 'Drops';
 
         if (foundMob.type === MobType.SHEEP) {
-          dropType = BlockType.LEAVES; // Fluffy wool block!
+          dropType = BlockType.SNOW; // Wool proxy!
           dropCount = 2;
-          dropName = 'Wool (Leaves)';
+          dropName = 'Fluffy Wool (Snow)';
         } else if (foundMob.type === MobType.PIG) {
-          dropType = BlockType.BRICK; // Raw Porkchop red brick proxy!
+          dropType = BlockType.BRICK; // Porkchop proxy!
           dropCount = 2;
           dropName = 'Raw Porkchop (Bricks)';
         } else if (foundMob.type === MobType.ZOMBIE) {
-          // rare reward
           const rand = Math.random();
           if (rand > 0.85) {
             dropType = BlockType.IRON_ORE;
@@ -1075,16 +2261,67 @@ export const handleAttackMobs = (
           }
           dropCount = 1;
         } else if (foundMob.type === MobType.CREEPER) {
-          // rare reward
           const rand = Math.random();
           if (rand > 0.9) {
             dropType = BlockType.DIAMOND_ORE;
             dropName = 'Diamond Ore';
           } else {
-            dropType = BlockType.COAL_ORE; // Gunpowder coal proxy!
+            dropType = BlockType.COAL_ORE;
             dropName = 'Gunpowder (Coal)';
           }
           dropCount = 1;
+        } else if (foundMob.type === MobType.BAT) {
+          dropType = BlockType.COAL_ORE;
+          dropCount = 1;
+          dropName = 'Bat wing (Coal)';
+        } else if (foundMob.type === MobType.PHANTOM) {
+          dropType = BlockType.ICE;
+          dropCount = 1;
+          dropName = 'Phantom Membrane (Ice)';
+        } else if (foundMob.type === MobType.BIRD) {
+          dropType = BlockType.REDWOOD_LEAVES;
+          dropCount = 1;
+          dropName = 'Feather (Pine Needles)';
+        } else if (foundMob.type === MobType.TIGER) {
+          dropType = BlockType.BRICK;
+          dropCount = 3;
+          dropName = 'Tiger Pelt (Bricks)';
+        } else if (foundMob.type === MobType.CHICKEN) {
+          dropType = BlockType.SAND;
+          dropCount = 1;
+          dropName = 'Chicken Egg (Sand)';
+        } else if (foundMob.type === MobType.FOX) {
+          dropType = BlockType.PLANKS;
+          dropCount = 1;
+          dropName = 'Fox fur (Planks)';
+        } else if (foundMob.type === MobType.WOLF || foundMob.type === MobType.DOG) {
+          dropType = BlockType.STONE;
+          dropCount = 1;
+          dropName = 'Bone (Stone)';
+        } else if (foundMob.type === MobType.FROG) {
+          dropType = BlockType.BAMBOO_STEM;
+          dropCount = 2;
+          dropName = 'Slimeball (Bamboo)';
+        } else if (foundMob.type === MobType.HORSE) {
+          dropType = BlockType.REDWOOD_LOG;
+          dropCount = 2;
+          dropName = 'Leather (Pine Log)';
+        } else if (foundMob.type === MobType.COW) {
+          dropType = BlockType.PLANKS;
+          dropCount = 2;
+          dropName = 'Leather (Planks)';
+        } else if (foundMob.type === MobType.YAK) {
+          dropType = BlockType.SNOW;
+          dropCount = 3;
+          dropName = 'Yak Hair (Snow)';
+        } else if (foundMob.type === MobType.VILLAGER) {
+          dropType = BlockType.GOLD_ORE;
+          dropCount = 2;
+          dropName = 'Emerald (Gold)';
+        } else if (foundMob.type === MobType.PILLAGER) {
+          dropType = BlockType.IRON_ORE;
+          dropCount = 2;
+          dropName = 'Crossbow trigger (Iron Ore)';
         }
 
         // Add to inventory directly using onBlockMined callback

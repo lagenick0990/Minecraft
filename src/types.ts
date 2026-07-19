@@ -15,6 +15,12 @@ export enum BlockType {
   GOLD_ORE = 13,
   DIAMOND_ORE = 14,
   WATER = 15,
+  SNOW = 16,
+  ICE = 17,
+  BAMBOO_STEM = 18,
+  CACTUS = 19,
+  REDWOOD_LOG = 20,
+  REDWOOD_LEAVES = 21,
 }
 
 export interface BlockConfig {
@@ -147,6 +153,50 @@ export const BLOCK_DEFINITIONS: Record<BlockType, BlockConfig> = {
     textureColorMap: { base: '#2980b9', shadow: '#1f618d', highlight: '#5dade2' },
     isTransparent: true,
     isSolid: false, // walk through water
+  },
+  [BlockType.SNOW]: {
+    type: BlockType.SNOW,
+    name: 'Snow Block',
+    color: '#ffffff',
+    textureColorMap: { base: '#ffffff', shadow: '#e2e8f0', highlight: '#ffffff' },
+    isSolid: true,
+  },
+  [BlockType.ICE]: {
+    type: BlockType.ICE,
+    name: 'Ice',
+    color: '#a5f3fc',
+    textureColorMap: { base: '#a5f3fc', shadow: '#7dd3fc', highlight: '#e0f2fe' },
+    isTransparent: true,
+    isSolid: true,
+  },
+  [BlockType.BAMBOO_STEM]: {
+    type: BlockType.BAMBOO_STEM,
+    name: 'Bamboo Stem',
+    color: '#4ade80',
+    textureColorMap: { base: '#4ade80', shadow: '#22c55e', highlight: '#86efac' },
+    isSolid: true,
+  },
+  [BlockType.CACTUS]: {
+    type: BlockType.CACTUS,
+    name: 'Cactus',
+    color: '#15803d',
+    textureColorMap: { base: '#15803d', shadow: '#166534', highlight: '#22c55e', accent: '#ffffff' },
+    isSolid: true,
+  },
+  [BlockType.REDWOOD_LOG]: {
+    type: BlockType.REDWOOD_LOG,
+    name: 'Pine Log',
+    color: '#451a03',
+    textureColorMap: { base: '#451a03', shadow: '#2d0e00', highlight: '#78350f', accent: '#f59e0b' },
+    isSolid: true,
+  },
+  [BlockType.REDWOOD_LEAVES]: {
+    type: BlockType.REDWOOD_LEAVES,
+    name: 'Pine Needles',
+    color: '#064e3b',
+    textureColorMap: { base: '#064e3b', shadow: '#022c22', highlight: '#059669' },
+    isTransparent: true,
+    isSolid: true,
   },
 };
 

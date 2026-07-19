@@ -181,6 +181,70 @@ export function createPixelTexture(
           color = noise > 0.7 ? highlight : noise > 0.3 ? base : shadow;
           break;
 
+        case BlockType.SNOW:
+          if (face === 'top') {
+            color = noise > 0.8 ? '#f1f5f9' : '#ffffff';
+          } else if (face === 'bottom') {
+            color = '#8b5a2b'; // dirt
+          } else {
+            // side
+            const grassEdge = 4 + Math.floor(pseudoRand(x, type) * 3);
+            if (y < grassEdge) {
+              color = noise > 0.8 ? '#f1f5f9' : '#ffffff'; // snow cap on side
+            } else {
+              color = pseudoRand(x, y) > 0.6 ? '#a46f3d' : '#8b5a2b';
+            }
+          }
+          break;
+
+        case BlockType.ICE:
+          // Translucent ice block with lines
+          const isIceHighlight = Math.abs((x + 2) - y) <= 1 || Math.abs((x - 10) - y) <= 1;
+          color = isIceHighlight ? '#e0f2fe' : '#7dd3fc';
+          break;
+
+        case BlockType.BAMBOO_STEM:
+          // Green with vertical streaks and horizontal node lines
+          const isNode = y === 4 || y === 12;
+          if (isNode) {
+            color = '#15803d'; // dark green node line
+          } else {
+            color = x === 2 || x === 8 || x === 14 ? '#86efac' : '#22c55e';
+          }
+          break;
+
+        case BlockType.CACTUS:
+          // Green body with little white dots for spines
+          const isSpine = pseudoRand(x, y) > 0.9;
+          if (isSpine) {
+            color = '#ffffff';
+          } else {
+            const stripe = x % 4 === 0;
+            color = stripe ? '#166534' : '#15803d';
+          }
+          break;
+
+        case BlockType.REDWOOD_LOG:
+          if (face === 'top' || face === 'bottom') {
+            // Dark ring
+            const dist = Math.hypot(x - 8, y - 8);
+            color = dist < 3 ? '#2d0e00' : dist < 6 ? '#f59e0b' : '#451a03';
+          } else {
+            // redwood bark pattern
+            color = x % 3 === 0 ? '#2d0e00' : '#451a03';
+          }
+          break;
+
+        case BlockType.REDWOOD_LEAVES:
+          const leafTrans = noise < 0.25;
+          if (leafTrans) {
+            ctx.clearRect(x, y, 1, 1);
+            continue;
+          } else {
+            color = noise > 0.7 ? '#059669' : noise > 0.35 ? '#064e3b' : '#022c22';
+          }
+          break;
+
         default:
           color = base;
           break;
@@ -220,14 +284,14 @@ export function getBlockMaterials(type: BlockType): THREE.Material[] {
     return new THREE.MeshStandardMaterial({
       map: t,
       roughness: 0.85,
-      metalness: type === BlockType.GLASS ? 0.1 : 0.0,
-      transparent: def.isTransparent || type === BlockType.GLASS,
-      alphaTest: type === BlockType.LEAVES ? 0.1 : 0.0,
+      metalness: type === BlockType.GLASS || type === BlockType.ICE ? 0.1 : 0.0,
+      transparent: def.isTransparent || type === BlockType.GLASS || type === BlockType.ICE || type === BlockType.REDWOOD_LEAVES,
+      alphaTest: type === BlockType.LEAVES || type === BlockType.REDWOOD_LEAVES ? 0.1 : 0.0,
       side: THREE.DoubleSide,
     });
   };
 
-  if (type === BlockType.GRASS) {
+  if (type === BlockType.GRASS || type === BlockType.SNOW) {
     // Order of materials in Three.js BoxGeometry:
     // px (Right), nx (Left), py (Top), ny (Bottom), pz (Front), nz (Back)
     const topTexture = createPixelTexture(type, 'top');
@@ -244,7 +308,7 @@ export function getBlockMaterials(type: BlockType): THREE.Material[] {
     materials.push(bottomMat); // Bottom
     materials.push(sideMat);   // Front
     materials.push(sideMat);   // Back
-  } else if (type === BlockType.WOOD) {
+  } else if (type === BlockType.WOOD || type === BlockType.REDWOOD_LOG) {
     const topTexture = createPixelTexture(type, 'top');
     const sideTexture = createPixelTexture(type, 'side');
 

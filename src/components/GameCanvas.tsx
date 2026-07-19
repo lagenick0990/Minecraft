@@ -144,7 +144,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       starsPositions[i + 2] = radius * Math.cos(phi);
     }
     starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPositions, 3));
-    const starsMaterial = new THREE.PointsMaterial({ color: '#ffffff', size: 1.5, sizeAttenuation: false });
+    const starsMaterial = new THREE.PointsMaterial({
+      color: '#ffffff',
+      size: 1.5,
+      sizeAttenuation: false,
+      transparent: true,
+      opacity: 0.0,
+    });
     const starsPoints = new THREE.Points(starsGeometry, starsMaterial);
     scene.add(starsPoints);
 
@@ -175,9 +181,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     // Track active weather colors and densities for transitions
     let actualFogDensity = 0.025;
     const actualSkyColor = new THREE.Color('#85c1e9');
+    const actualSunColor = new THREE.Color('#fffdf2');
+    const actualAmbientColor = new THREE.Color('#ffffff');
+    const actualFogColor = new THREE.Color('#85c1e9');
     let actualSunIntensity = 1.2;
     let actualAmbientIntensity = 0.55;
     let actualRainOpacity = 0.0;
+    let actualStarsOpacity = 0.0;
     let lightningTimer = 0;
 
     // --- PROCEDURAL WORLD STATE ---
@@ -209,25 +219,193 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       }
     };
 
+    // Biome Detector based onTemperature and Humidity noises
+    const getBiomeAt = (x: number, z: number): 'WINTER' | 'DESERT' | 'BAMBOO' | 'HILLY' | 'FOREST' => {
+      // Scale coordinates down to make smooth biome regions (wavelength ~250 blocks)
+      const bx = x / 220;
+      const bz = z / 220;
+      
+      const tempNoise = noise.noise(bx, bz); // temperature: ranges from -1 to 1
+      const humidNoise = noise.noise(bx + 100, bz + 100); // humidity: ranges from -1 to 1
+
+      if (tempNoise < -0.3) {
+        return 'WINTER'; // cold climate
+      } else if (tempNoise > 0.3) {
+        if (humidNoise < -0.2) {
+          return 'DESERT'; // hot and dry
+        } else {
+          return 'BAMBOO'; // hot and wet (lush bamboo forests)
+        }
+      } else {
+        if (humidNoise > 0.3) {
+          return 'HILLY'; // temperate but very hilly/mountainous
+        } else {
+          return 'FOREST'; // temperate green forest
+        }
+      }
+    };
+
     // Terrain Procedural Height Generator
     const getTerrainHeight = (x: number, z: number): number => {
-      // Scale coordinates down to make gentle rolling hills
+      const biome = getBiomeAt(x, z);
       const nx = x / 40;
       const nz = z / 40;
 
-      // Base flat plains + some bigger hills
-      const plains = noise.fbm(nx, nz, 3, 0.45) * 8;
-      const mountains = noise.fbm(nx * 2, nz * 2, 4, 0.5) * 16;
-      const blend = noise.noise(nx / 3, nz / 3); // smooth blending factor
+      let height = 6;
 
-      let height = 6 + THREE.MathUtils.lerp(plains, mountains, blend);
+      if (biome === 'WINTER') {
+        const plains = noise.fbm(nx, nz, 3, 0.4) * 6;
+        height = 7 + plains;
+      } else if (biome === 'DESERT') {
+        // Smooth rolling sand dunes
+        const dunes = Math.sin(x / 14) * Math.cos(z / 14) * 2.2 + noise.fbm(nx, nz, 2, 0.3) * 3;
+        height = 6 + dunes;
+      } else if (biome === 'BAMBOO') {
+        const flat = noise.fbm(nx, nz, 2, 0.3) * 4;
+        height = 6 + flat;
+      } else if (biome === 'HILLY') {
+        // High steep jagged peaks
+        const peaks = Math.abs(noise.fbm(nx * 1.5, nz * 1.5, 4, 0.55)) * 24;
+        height = 8 + peaks;
+      } else {
+        // FOREST
+        const plains = noise.fbm(nx, nz, 3, 0.45) * 8;
+        const mountains = noise.fbm(nx * 2, nz * 2, 4, 0.5) * 14;
+        const blend = noise.noise(nx / 3, nz / 3); // smooth blending factor
+        height = 6 + THREE.MathUtils.lerp(plains, mountains, blend);
+      }
 
-      // Beach/coastal smoothing near water
-      if (height < WATER_LEVEL + 1) {
+      // Beach/coastal smoothing near water (exclude desert & steep hilly peak zones)
+      if (biome !== 'DESERT' && biome !== 'HILLY' && height < WATER_LEVEL + 1) {
         height = THREE.MathUtils.lerp(height, WATER_LEVEL + 0.5, 0.4);
       }
 
       return Math.floor(height);
+    };
+
+    // Helper to spawn a specific mob directly at a location during chunk structure loading
+    const spawnMobAt = (type: MobType, x: number, y: number, z: number) => {
+      const mob = spawnMobProcedural(type, new THREE.Vector3(x, y, z), getTerrainHeight, scene);
+      mob.position.set(x, y + 0.5, z);
+      mob.group.position.copy(mob.position);
+      mobsList.push(mob);
+    };
+
+    // Village House Procedural Builder
+    const buildVillageHouse = (cx: number, cy: number, cz: number) => {
+      // House base (5x5, height 4)
+      for (let dx = -2; dx <= 2; dx++) {
+        for (let dz = -2; dz <= 2; dz++) {
+          for (let dy = 0; dy < 4; dy++) {
+            const bx = cx + dx;
+            const by = cy + dy;
+            const bz = cz + dz;
+            
+            // Outer wall shells
+            if (Math.abs(dx) === 2 || Math.abs(dz) === 2) {
+              const bType = dy === 0 ? BlockType.COBBLESTONE : BlockType.PLANKS;
+              // Leave door opening at front
+              if (dx === 0 && dz === 2 && dy < 2) {
+                // door opening
+              } else if (dy === 2 && (dx === 2 || dx === -2 || dz === 2 || dz === -2)) {
+                // glass window opening
+              } else {
+                worldBlocks.set(`${bx},${by},${bz}`, bType);
+              }
+            } else {
+              // Interior floor
+              if (dy === 0) {
+                worldBlocks.set(`${bx},${by},${bz}`, BlockType.PLANKS);
+              }
+            }
+          }
+        }
+      }
+      
+      // Pyramidal wood roof
+      for (let dx = -3; dx <= 3; dx++) {
+        for (let dz = -3; dz <= 3; dz++) {
+          const rx = cx + dx;
+          const ry = cy + 4;
+          const rz = cz + dz;
+          if (Math.abs(dx) <= 3 - Math.abs(dz)) {
+            worldBlocks.set(`${rx},${ry},${rz}`, BlockType.WOOD);
+          }
+        }
+      }
+    };
+
+    // Pillager Outpost Tower Procedural Builder
+    const buildPillagerTower = (cx: number, cy: number, cz: number) => {
+      // Outpost base (6x6, height 9)
+      for (let dy = 0; dy < 9; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          for (let dz = -2; dz <= 2; dz++) {
+            const bx = cx + dx;
+            const by = cy + dy;
+            const bz = cz + dz;
+            const isCorner = Math.abs(dx) === 2 && Math.abs(dz) === 2;
+            const isEdge = Math.abs(dx) === 2 || Math.abs(dz) === 2;
+
+            if (isEdge) {
+              if (dy < 6) {
+                // Cobblestone base with wood pillars
+                worldBlocks.set(`${bx},${by},${bz}`, isCorner ? BlockType.REDWOOD_LOG : BlockType.COBBLESTONE);
+              } else if (dy === 6) {
+                // Lookout balcony deck ring
+                worldBlocks.set(`${bx},${by},${bz}`, BlockType.REDWOOD_LOG);
+              } else if (dy < 8) {
+                // Lookout fencing corner posts
+                if (isCorner) {
+                  worldBlocks.set(`${bx},${by},${bz}`, BlockType.REDWOOD_LOG);
+                }
+              } else {
+                // Lookout canopy base
+                worldBlocks.set(`${bx},${by},${bz}`, BlockType.PLANKS);
+              }
+            } else if (dy === 5) {
+              // Lookout wooden floor
+              worldBlocks.set(`${bx},${by},${bz}`, BlockType.PLANKS);
+            }
+          }
+        }
+      }
+      
+      // Outpost peak roof
+      worldBlocks.set(`${cx},${cy + 9},${cz}`, BlockType.REDWOOD_LOG);
+    };
+
+    // Ancient City Portal and columns Procedural Builder
+    const buildAncientCity = (cx: number, cy: number, cz: number) => {
+      // Cobblestone platform arena (11x11 floor)
+      for (let dx = -5; dx <= 5; dx++) {
+        for (let dz = -5; dz <= 5; dz++) {
+          const bx = cx + dx;
+          const by = cy;
+          const bz = cz + dz;
+          worldBlocks.set(`${bx},${by},${bz}`, (dx + dz) % 2 === 0 ? BlockType.COBBLESTONE : BlockType.STONE);
+        }
+      }
+
+      // Pillars capped by blue ice soul lanterns
+      const pillarOffsets = [
+        [-4, -4], [-4, 4], [4, -4], [4, 4]
+      ];
+      pillarOffsets.forEach(([px, pz]) => {
+        for (let dy = 1; dy <= 5; dy++) {
+          const bType = dy === 5 ? BlockType.ICE : BlockType.STONE;
+          worldBlocks.set(`${cx + px},${cy + dy},${cz + pz}`, bType);
+        }
+      });
+
+      // Central portal monument
+      for (let dy = 1; dy <= 4; dy++) {
+        worldBlocks.set(`${cx - 1},${cy + dy},${cz}`, BlockType.STONE);
+        worldBlocks.set(`${cx + 1},${cy + dy},${cz}`, BlockType.STONE);
+      }
+      worldBlocks.set(`${cx},${cy + 4},${cz}`, BlockType.STONE);
+      worldBlocks.set(`${cx},${cy + 2},${cz}`, BlockType.ICE); // Blue glowing portal centers
+      worldBlocks.set(`${cx},${cy + 3},${cz}`, BlockType.ICE);
     };
 
     // Generate a single chunk at coordinates (chunkX, chunkZ)
@@ -243,6 +421,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           const worldX = chunkX * CHUNK_SIZE + x;
           const worldZ = chunkZ * CHUNK_SIZE + z;
 
+          const biome = getBiomeAt(worldX, worldZ);
           const heightY = getTerrainHeight(worldX, worldZ);
 
           for (let y = 0; y < CHUNK_HEIGHT; y++) {
@@ -253,15 +432,29 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               bType = BlockType.STONE; // Bedrock bottom
             } else if (y <= heightY) {
               if (y === heightY) {
-                // Top block
-                if (y <= WATER_LEVEL + 1) {
-                  bType = BlockType.SAND; // sand beach
+                // Top block based on biome
+                if (biome === 'WINTER') {
+                  bType = BlockType.SNOW;
+                } else if (biome === 'DESERT') {
+                  bType = BlockType.SAND;
+                } else if (biome === 'HILLY') {
+                  bType = treeRand.next() < 0.4 ? BlockType.COBBLESTONE : BlockType.GRASS;
                 } else {
-                  bType = BlockType.GRASS;
+                  if (y <= WATER_LEVEL + 1) {
+                    bType = BlockType.SAND; // sand beach
+                  } else {
+                    bType = BlockType.GRASS;
+                  }
                 }
               } else if (y >= heightY - 3) {
-                // Underneath dirt/sand
-                bType = heightY <= WATER_LEVEL + 1 ? BlockType.SAND : BlockType.DIRT;
+                // Underneath layers
+                if (biome === 'DESERT') {
+                  bType = BlockType.SAND;
+                } else if (biome === 'WINTER') {
+                  bType = BlockType.DIRT;
+                } else {
+                  bType = heightY <= WATER_LEVEL + 1 ? BlockType.SAND : BlockType.DIRT;
+                }
               } else {
                 // Stone depth
                 bType = BlockType.STONE;
@@ -280,8 +473,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 }
               }
             } else if (y <= WATER_LEVEL) {
-              // Fill with water up to water level
-              bType = BlockType.WATER;
+              // Water blocks/Ice blocks at sea level
+              if (biome === 'WINTER' && y === WATER_LEVEL) {
+                bType = BlockType.ICE; // frozen lakes
+              } else if (biome === 'DESERT') {
+                bType = BlockType.SAND; // dry dunes
+              } else {
+                bType = BlockType.WATER;
+              }
             }
 
             if (bType !== BlockType.AIR) {
@@ -289,33 +488,77 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             }
           }
 
-          // Procedural Trees (Only on top of Grass)
+          // Procedural Trees & Vegetation based on biome
           const topHeight = heightY;
-          if (topHeight > WATER_LEVEL + 1) {
+          if (topHeight > WATER_LEVEL + 1 || biome === 'DESERT') {
             const blockKey = `${worldX},${topHeight},${worldZ}`;
-            if (worldBlocks.get(blockKey) === BlockType.GRASS) {
-              // 1.5% chance for a tree
+            const topBlock = worldBlocks.get(blockKey);
+
+            if (biome === 'WINTER' && topBlock === BlockType.SNOW) {
+              // 2% Conifer tree chance
+              if (treeRand.next() < 0.02) {
+                const trunkHeight = 5 + Math.floor(treeRand.next() * 3);
+                // Pine Trunk
+                for (let ty = 1; ty <= trunkHeight; ty++) {
+                  worldBlocks.set(`${worldX},${topHeight + ty},${worldZ}`, BlockType.REDWOOD_LOG);
+                }
+                // Pine conical leaves canopy
+                for (let ly = 2; ly <= trunkHeight + 1; ly++) {
+                  const layerRadius = Math.max(1, Math.floor((trunkHeight - ly) * 0.5) + 1);
+                  for (let lx = -layerRadius; lx <= layerRadius; lx++) {
+                    for (let lz = -layerRadius; lz <= layerRadius; lz++) {
+                      if (Math.abs(lx) + Math.abs(lz) <= layerRadius + 1) {
+                        const leafX = worldX + lx;
+                        const leafY = topHeight + ly;
+                        const leafZ = worldZ + lz;
+                        const leafKey = `${leafX},${leafY},${leafZ}`;
+                        if (worldBlocks.get(leafKey) !== BlockType.REDWOOD_LOG) {
+                          worldBlocks.set(leafKey, BlockType.REDWOOD_LEAVES);
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            } else if (biome === 'DESERT' && topBlock === BlockType.SAND) {
+              // Cactus generation (1.5% chance)
+              if (treeRand.next() < 0.015) {
+                const cactusHeight = 2 + Math.floor(treeRand.next() * 2);
+                for (let ty = 1; ty <= cactusHeight; ty++) {
+                  worldBlocks.set(`${worldX},${topHeight + ty},${worldZ}`, BlockType.CACTUS);
+                }
+                // Branching arms
+                if (cactusHeight >= 3) {
+                  worldBlocks.set(`${worldX + 1},${topHeight + 2},${worldZ}`, BlockType.CACTUS);
+                  worldBlocks.set(`${worldX - 1},${topHeight + 2},${worldZ}`, BlockType.CACTUS);
+                }
+              }
+            } else if (biome === 'BAMBOO' && topBlock === BlockType.GRASS) {
+              // Dense bamboo stalks (4.5% chance)
+              if (treeRand.next() < 0.045) {
+                const bambooHeight = 4 + Math.floor(treeRand.next() * 4);
+                for (let ty = 1; ty <= bambooHeight; ty++) {
+                  worldBlocks.set(`${worldX},${topHeight + ty},${worldZ}`, BlockType.BAMBOO_STEM);
+                }
+              }
+            } else if (biome === 'FOREST' && topBlock === BlockType.GRASS) {
+              // Standard leafy oak trees (1.8% chance)
               if (treeRand.next() < 0.018) {
                 const trunkHeight = 4 + Math.floor(treeRand.next() * 2);
-
-                // Trunk
+                // Wood trunk
                 for (let ty = 1; ty <= trunkHeight; ty++) {
                   worldBlocks.set(`${worldX},${topHeight + ty},${worldZ}`, BlockType.WOOD);
                 }
-
                 // Leaves canopy
                 for (let ly = -2; ly <= 2; ly++) {
                   for (let lx = -2; lx <= 2; lx++) {
                     for (let lz = -2; lz <= 2; lz++) {
-                      // Rounded leaf sphere
                       const dist = Math.sqrt(lx * lx + ly * ly + lz * lz);
                       if (dist <= 2.2) {
                         const leafX = worldX + lx;
                         const leafY = topHeight + trunkHeight + ly;
                         const leafZ = worldZ + lz;
                         const leafKey = `${leafX},${leafY},${leafZ}`;
-
-                        // Don't replace wood
                         if (worldBlocks.get(leafKey) !== BlockType.WOOD) {
                           worldBlocks.set(leafKey, BlockType.LEAVES);
                         }
@@ -327,6 +570,39 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             }
           }
         }
+      }
+
+      // Pre-baked Structures Spawner centered at specific coordinates near spawn
+      if (chunkX === 1 && chunkZ === 1) {
+        // Village house at x: 24, z: 24
+        const topY = getTerrainHeight(24, 24);
+        buildVillageHouse(24, topY + 1, 24);
+        // Spawn villagers!
+        setTimeout(() => {
+          spawnMobAt(MobType.VILLAGER, 23, topY + 1, 23);
+          spawnMobAt(MobType.VILLAGER, 25, topY + 1, 23);
+          spawnMobAt(MobType.VILLAGER, 24, topY + 1, 25);
+        }, 100);
+      } else if (chunkX === -2 && chunkZ === -2) {
+        // Pillager Outpost Tower at x: -32, z: -32
+        const topY = getTerrainHeight(-32, -32);
+        buildPillagerTower(-32, topY + 1, -32);
+        // Spawn Pillagers!
+        setTimeout(() => {
+          spawnMobAt(MobType.PILLAGER, -30, topY + 1, -30);
+          spawnMobAt(MobType.PILLAGER, -34, topY + 1, -34);
+          spawnMobAt(MobType.PILLAGER, -32, topY + 6, -32); // lookout tower archer!
+        }, 100);
+      } else if (chunkX === 1 && chunkZ === -2) {
+        // Ancient City Ruins at x: 24, z: -32
+        const topY = getTerrainHeight(24, -32);
+        buildAncientCity(24, topY + 1, -32);
+        // Spawn guardian creepers & zombies!
+        setTimeout(() => {
+          spawnMobAt(MobType.CREEPER, 22, topY + 1, -30);
+          spawnMobAt(MobType.ZOMBIE, 26, topY + 1, -34);
+          spawnMobAt(MobType.ZOMBIE, 24, topY + 1, -32);
+        }, 100);
       }
     };
 
@@ -661,6 +937,110 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
     // --- DYNAMIC LIGHTING / DAY-NIGHT CYCLE & WEATHER ---
     let timeOfDayValue = 6000; // start at midday (0 - 24000)
+
+    const timeKeyframes = [
+      {
+        tick: 0,
+        skyColor: '#ff7e5f',      // Sunrise peach/orange
+        sunColor: '#ff9f43',      // Warm golden sun
+        ambientColor: '#d6a2e8',  // Soft lilac ambient shadows
+        sunIntensity: 0.7,
+        ambientIntensity: 0.35,
+        starsOpacity: 0.2,
+        fogColor: '#ff7e5f'
+      },
+      {
+        tick: 2000,
+        skyColor: '#a1c4fd',      // Soft morning blue
+        sunColor: '#fff2cc',      // Light yellow sun
+        ambientColor: '#e3f2fd',  // Crisp blue ambient shadows
+        sunIntensity: 1.1,
+        ambientIntensity: 0.5,
+        starsOpacity: 0.0,
+        fogColor: '#a1c4fd'
+      },
+      {
+        tick: 6000,
+        skyColor: '#85c1e9',      // Midday sky blue
+        sunColor: '#ffffff',      // Pure white noon sun
+        ambientColor: '#ffffff',  // Balanced ambient light
+        sunIntensity: 1.2,
+        ambientIntensity: 0.55,
+        starsOpacity: 0.0,
+        fogColor: '#85c1e9'
+      },
+      {
+        tick: 10000,
+        skyColor: '#93b7eb',      // Fading day blue
+        sunColor: '#ffeedd',      // Warm evening tint
+        ambientColor: '#f8f9fa',  // Balanced ambient light
+        sunIntensity: 1.1,
+        ambientIntensity: 0.5,
+        starsOpacity: 0.0,
+        fogColor: '#93b7eb'
+      },
+      {
+        tick: 11500,
+        skyColor: '#f39c12',      // Rich sunset gold
+        sunColor: '#e67e22',      // Deep orange sunset
+        ambientColor: '#f5b041',  // Orange ambient bounces
+        sunIntensity: 0.9,
+        ambientIntensity: 0.4,
+        starsOpacity: 0.1,
+        fogColor: '#f39c12'
+      },
+      {
+        tick: 12500,
+        skyColor: '#9b59b6',      // Purple dusk / twilight
+        sunColor: '#ff5e00',      // Crimson sun
+        ambientColor: '#5b3a6c',  // Deep purple ambient shadows
+        sunIntensity: 0.4,
+        ambientIntensity: 0.25,
+        starsOpacity: 0.4,
+        fogColor: '#9b59b6'
+      },
+      {
+        tick: 14000,
+        skyColor: '#1f2d5a',      // Early night dark indigo
+        sunColor: '#3a4f7c',      // Faded blue moonray
+        ambientColor: '#182245',  // Dark blue ambient
+        sunIntensity: 0.1,
+        ambientIntensity: 0.18,
+        starsOpacity: 0.8,
+        fogColor: '#1f2d5a'
+      },
+      {
+        tick: 18000,
+        skyColor: '#050814',      // Midnight deep cosmic space
+        sunColor: '#85a5ff',      // Faint blue moonlight
+        ambientColor: '#0b0f19',  // Dark cold shadow ambient
+        sunIntensity: 0.25,       // Soft moonlight shadows
+        ambientIntensity: 0.15,
+        starsOpacity: 1.0,
+        fogColor: '#050814'
+      },
+      {
+        tick: 22500,
+        skyColor: '#2c1b3d',      // Deep dawn violet
+        sunColor: '#ff4e50',      // Magenta horizon glow
+        ambientColor: '#20142b',  // Dark crimson ambient
+        sunIntensity: 0.1,
+        ambientIntensity: 0.2,
+        starsOpacity: 0.7,
+        fogColor: '#2c1b3d'
+      },
+      {
+        tick: 24000,
+        skyColor: '#ff7e5f',      // Wrap around back to sunrise
+        sunColor: '#ff9f43',
+        ambientColor: '#d6a2e8',
+        sunIntensity: 0.7,
+        ambientIntensity: 0.35,
+        starsOpacity: 0.2,
+        fogColor: '#ff7e5f'
+      }
+    ];
+
     const updateDayNightCycle = (dt: number) => {
       // 1 minute in real life = 24000 ticks
       // Let's speed it up: day is ~ 3 minutes
@@ -681,72 +1061,94 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       const lx = Math.cos(angle) * 60;
       const ly = Math.sin(angle) * 60;
 
-      sunLight.position.set(lx, ly, 10);
-
-      // Base Day/Night calculations
-      const targetSkyColor = new THREE.Color();
-      let targetFogDensity = 0.025;
-      let targetSunIntensity = 0;
-      let targetAmbientIntensity = 0.15;
-      let targetStarsVisible = false;
-
-      if (ly > 0) {
-        // Daytime base values
-        targetSunIntensity = Math.min(1.2, (ly / 10) * 1.2);
-        targetAmbientIntensity = Math.min(0.55, 0.2 + (ly / 15) * 0.35);
-
-        const dayColor = new THREE.Color('#85c1e9');
-        const sunsetColor = new THREE.Color('#e67e22');
-        const sunInterpolate = Math.max(0, Math.min(1, ly / 12));
-        targetSkyColor.copy(sunsetColor).lerp(dayColor, sunInterpolate);
-
-        targetStarsVisible = ly < 15;
+      // Position the Sun or the Moon (shines opposite to the sun at night so it stays in the sky!)
+      if (ly >= 0) {
+        sunLight.position.set(lx, ly, 10);
       } else {
-        // Nighttime base values
-        targetSunIntensity = 0;
-        targetAmbientIntensity = 0.15;
-        targetSkyColor.set('#0b1021');
-        targetStarsVisible = true;
+        sunLight.position.set(-lx, -ly, 10);
       }
+
+      // Find the two keyframes enclosing the current timeOfDayValue
+      let kf1 = timeKeyframes[0];
+      let kf2 = timeKeyframes[timeKeyframes.length - 1];
+
+      for (let i = 0; i < timeKeyframes.length - 1; i++) {
+        if (timeOfDayValue >= timeKeyframes[i].tick && timeOfDayValue <= timeKeyframes[i + 1].tick) {
+          kf1 = timeKeyframes[i];
+          kf2 = timeKeyframes[i + 1];
+          break;
+        }
+      }
+
+      // Calculate interpolation ratio (t: 0 to 1)
+      const duration = kf2.tick - kf1.tick;
+      const t = duration > 0 ? (timeOfDayValue - kf1.tick) / duration : 0;
+
+      // Lerp sky, sun, ambient, and fog colors from keyframes
+      const baseSkyColor = new THREE.Color(kf1.skyColor).lerp(new THREE.Color(kf2.skyColor), t);
+      const baseSunColor = new THREE.Color(kf1.sunColor).lerp(new THREE.Color(kf2.sunColor), t);
+      const baseAmbientColor = new THREE.Color(kf1.ambientColor).lerp(new THREE.Color(kf2.ambientColor), t);
+      const baseFogColor = new THREE.Color(kf1.fogColor).lerp(new THREE.Color(kf2.fogColor), t);
+
+      let targetSunIntensity = kf1.sunIntensity + (kf2.sunIntensity - kf1.sunIntensity) * t;
+      let targetAmbientIntensity = kf1.ambientIntensity + (kf2.ambientIntensity - kf1.ambientIntensity) * t;
+      let targetStarsOpacity = kf1.starsOpacity + (kf2.starsOpacity - kf1.starsOpacity) * t;
+      let targetFogDensity = 0.025;
+
+      const targetSkyColor = baseSkyColor.clone();
+      const targetSunColor = baseSunColor.clone();
+      const targetAmbientColor = baseAmbientColor.clone();
+      const targetFogColor = baseFogColor.clone();
 
       // Modify based on weather condition
       const activeWeather = weatherRef.current;
       if (activeWeather === 'RAINY') {
         const rainSkyColor = new THREE.Color('#434c5e'); // dark slate grey
         targetSkyColor.lerp(rainSkyColor, 0.75);
+        targetFogColor.lerp(rainSkyColor, 0.75);
         targetFogDensity = 0.055;
         targetSunIntensity *= 0.25;
         targetAmbientIntensity *= 0.6;
-        targetStarsVisible = false;
+        targetStarsOpacity = 0.0; // cloud cover hides stars
       } else if (activeWeather === 'FOGGY') {
         const fogSkyColor = ly > 0 ? new THREE.Color('#a0aec0') : new THREE.Color('#1a202c'); // dense mist
         targetSkyColor.lerp(fogSkyColor, 0.85);
+        targetFogColor.lerp(fogSkyColor, 0.85);
         targetFogDensity = 0.085; // very thick fog!
         targetSunIntensity *= 0.3;
         targetAmbientIntensity = Math.max(targetAmbientIntensity * 0.8, 0.25);
-        targetStarsVisible = false;
+        targetStarsOpacity *= 0.1; // fog dims stars
       }
 
       // Smoothly transition actual values toward targets
       const transitionSpeed = 1.2; // rate of transition
       actualFogDensity += (targetFogDensity - actualFogDensity) * transitionSpeed * dt;
       actualSkyColor.lerp(targetSkyColor, transitionSpeed * dt);
+      actualSunColor.lerp(targetSunColor, transitionSpeed * dt);
+      actualAmbientColor.lerp(targetAmbientColor, transitionSpeed * dt);
+      actualFogColor.lerp(targetFogColor, transitionSpeed * dt);
       actualSunIntensity += (targetSunIntensity - actualSunIntensity) * transitionSpeed * dt;
       actualAmbientIntensity += (targetAmbientIntensity - actualAmbientIntensity) * transitionSpeed * dt;
+      actualStarsOpacity += (targetStarsOpacity - actualStarsOpacity) * transitionSpeed * dt;
 
       // Apply to scene elements (if lightning isn't flashing)
       if (lightningTimer <= 0) {
         scene.background = actualSkyColor;
         if (scene.fog) {
-          scene.fog.color = actualSkyColor;
+          scene.fog.color = actualFogColor;
           (scene.fog as THREE.FogExp2).density = actualFogDensity;
         }
         if (renderer) renderer.setClearColor(actualSkyColor);
       }
 
+      sunLight.color.copy(actualSunColor);
       sunLight.intensity = actualSunIntensity;
+      ambientLight.color.copy(actualAmbientColor);
       ambientLight.intensity = actualAmbientIntensity;
-      starsPoints.visible = targetStarsVisible;
+
+      // Smoothly fade star opacity
+      starsMaterial.opacity = actualStarsOpacity;
+      starsPoints.visible = actualStarsOpacity > 0.01;
     };
 
     // --- SELECTION RAYCAST HIGHLIGHTER (CROSSHAIR BOX OUTLINE) ---
@@ -1132,20 +1534,57 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       // Procedural Mob Spawning and despawn ring check
       mobSpawnTimer += dt;
-      if (mobSpawnTimer > 3.0) {
+      if (mobSpawnTimer > 2.5) {
         mobSpawnTimer = 0;
         const activeMobs = mobsList.filter((m) => !m.isDead);
-        if (activeMobs.length < MAX_MOBS) {
-          const types = [MobType.SHEEP, MobType.PIG, MobType.ZOMBIE, MobType.CREEPER];
-          const randType = types[Math.floor(Math.random() * types.length)];
+        if (activeMobs.length < 16) { // Increase max mobs to populate the biomes!
+          // Choose random coordinate inside spawn radius around player
+          const angle = Math.random() * Math.PI * 2;
+          const radius = 16 + Math.random() * 20;
+          const spawnX = Math.floor(playerPos.x + Math.cos(angle) * radius);
+          const spawnZ = Math.floor(playerPos.z + Math.sin(angle) * radius);
+          const b = getBiomeAt(spawnX, spawnZ);
+
+          // Allowed spawning creatures based on climate biome
+          let allowedTypes = [MobType.SHEEP, MobType.PIG];
+          if (b === 'WINTER') {
+            allowedTypes = [MobType.YAK, MobType.FOX, MobType.WOLF, MobType.SHEEP, MobType.BAT];
+          } else if (b === 'BAMBOO') {
+            allowedTypes = [MobType.TIGER, MobType.FROG, MobType.CHICKEN, MobType.BIRD, MobType.BAT];
+          } else if (b === 'DESERT') {
+            allowedTypes = [MobType.FOX, MobType.BAT, MobType.CREEPER];
+          } else if (b === 'HILLY') {
+            allowedTypes = [MobType.YAK, MobType.WOLF, MobType.PHANTOM, MobType.BIRD];
+          } else {
+            // FOREST
+            allowedTypes = [MobType.COW, MobType.HORSE, MobType.CHICKEN, MobType.DOG, MobType.SHEEP, MobType.PIG, MobType.BIRD];
+          }
+
+          // Add Undead hostiles at night!
+          const hour = (timeOfDayValue / 1000); // ranges 0 - 24
+          const isNight = hour > 12.5 && hour < 23.5;
+          if (isNight) {
+            allowedTypes.push(MobType.ZOMBIE, MobType.CREEPER);
+            if (b === 'HILLY' || Math.random() < 0.25) {
+              allowedTypes.push(MobType.PHANTOM);
+            }
+          }
+
+          const randType = allowedTypes[Math.floor(Math.random() * allowedTypes.length)];
           const newMob = spawnMobProcedural(randType, playerPos, getTerrainHeight, scene);
+          
+          // Position mob exactly on top of terrain
+          const spawnY = getTerrainHeight(spawnX, spawnZ) + 1;
+          newMob.position.set(spawnX, spawnY, spawnZ);
+          newMob.group.position.set(spawnX, spawnY, spawnZ);
+
           mobsList.push(newMob);
         }
 
         // Clean extremely distant offscreen mobs to free WebGL memory
         for (let i = mobsList.length - 1; i >= 0; i--) {
           const m = mobsList[i];
-          if (!m.isDead && m.position.distanceTo(playerPos) > 55) {
+          if (!m.isDead && m.position.distanceTo(playerPos) > 60) {
             scene.remove(m.group);
             mobsList.splice(i, 1);
           }
