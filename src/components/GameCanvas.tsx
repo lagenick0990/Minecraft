@@ -86,6 +86,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     let lastRegenTime = performance.now();
     let previousHealth = statsRef.current.health;
 
+    // --- EARLY STATE VARIABLE DECLARATIONS ---
+    let timeOfDayValue = 6000; // start at midday (0 - 24000)
+    const mobsList: Mob[] = [];
+    const particleBursts: ParticleBurst[] = [];
+
     // --- GAME ENGINE CONSTANTS ---
     const CHUNK_SIZE = 16;
     const CHUNK_HEIGHT = 24;
@@ -1183,7 +1188,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     rebuildInstancedMeshes();
 
     // --- DYNAMIC LIGHTING / DAY-NIGHT CYCLE & WEATHER ---
-    let timeOfDayValue = 6000; // start at midday (0 - 24000)
+    timeOfDayValue = 6000; // start at midday (0 - 24000)
 
     const timeKeyframes = [
       {
@@ -1863,8 +1868,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     };
 
     // --- MOB SYSTEM SETUP ---
-    const mobsList: Mob[] = [];
-    const particleBursts: ParticleBurst[] = [];
     let mobSpawnTimer = 0.0;
     const MAX_MOBS = 8;
 
