@@ -1,0 +1,6 @@
+{
+  "name": "Minecraft Clone",
+  "description": "A Minecraft featuring procedural terrain generation, block mining and placement, inventory management, and different block types.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
