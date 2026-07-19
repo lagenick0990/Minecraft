@@ -96,6 +96,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     const JUMP_FORCE = 7.5;
     const WALK_SPEED = 5.0;
 
+    // Player Mesh references
+    let playerMesh: THREE.Group;
+    let leftLegMesh: THREE.Mesh;
+    let rightLegMesh: THREE.Mesh;
+    let leftArmMesh: THREE.Mesh;
+    let rightArmMesh: THREE.Mesh;
+
     // --- ENGINE INITIALIZATION ---
     const width = mountRef.current.clientWidth;
     const height = mountRef.current.clientHeight;
@@ -236,6 +243,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
     // Biome Detector based onTemperature and Humidity noises
     const getBiomeAt = (x: number, z: number): 'WINTER' | 'DESERT' | 'BAMBOO' | 'HILLY' | 'FOREST' => {
+      if (settingsRef.current.spawnBiome && settingsRef.current.spawnBiome !== 'ANY') {
+        return settingsRef.current.spawnBiome;
+      }
+
       // Scale coordinates down to make smooth biome regions (wavelength ~250 blocks)
       const bx = x / 220;
       const bz = z / 220;
@@ -474,16 +485,51 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 // Stone depth
                 bType = BlockType.STONE;
 
-                // Procedural Ore veins deep in the stone
-                if (y < 8) {
-                  const oreNoise = noise.noise(worldX / 3.5, y / 2.5 + worldZ / 3.5);
-                  if (oreNoise > 0.84) {
-                    // Random ore based on depth
-                    const oreSelector = treeRand.next();
-                    if (oreSelector > 0.95 && y < 4) bType = BlockType.DIAMOND_ORE;
-                    else if (oreSelector > 0.85 && y < 6) bType = BlockType.GOLD_ORE;
-                    else if (oreSelector > 0.60) bType = BlockType.IRON_ORE;
-                    else bType = BlockType.COAL_ORE;
+                // 3D Caves carving (intersecting tubes using noise)
+                const n1 = noise.noise(worldX / 10, worldZ / 10);
+                const n2 = noise.noise(worldZ / 10, y / 6);
+                const isCave = Math.abs(n1 - 0.5) < 0.12 && Math.abs(n2 - 0.5) < 0.12;
+
+                if (isCave && y > 1) {
+                  bType = BlockType.AIR;
+                } else {
+                  // Check if adjacent to a cave (to spawn ores/minerals on wall surfaces)
+                  const isWall = (y < heightY - 3) && (
+                    Math.abs(noise.noise(worldX / 10, worldZ / 10) - 0.5) < 0.15 &&
+                    Math.abs(noise.noise(worldZ / 10, (y + 1) / 6) - 0.5) < 0.15
+                  );
+
+                  if (isWall) {
+                    const rVal = treeRand.next();
+                    if (rVal < 0.005) bType = BlockType.DIAMOND_BLOCK;
+                    else if (rVal < 0.010) bType = BlockType.EMERALD_BLOCK;
+                    else if (rVal < 0.018) bType = BlockType.GOLD_BLOCK;
+                    else if (rVal < 0.035) bType = BlockType.DIAMOND_ORE;
+                    else if (rVal < 0.055) bType = BlockType.EMERALD_ORE;
+                    else if (rVal < 0.080) bType = BlockType.GOLD_ORE;
+                    else {
+                      // fallback to normal vein noise
+                      const oreNoise = noise.noise(worldX / 3.5, y / 2.5 + worldZ / 3.5);
+                      if (oreNoise > 0.84) {
+                        const oreSelector = treeRand.next();
+                        if (oreSelector > 0.95 && y < 4) bType = BlockType.DIAMOND_ORE;
+                        else if (oreSelector > 0.85 && y < 6) bType = BlockType.GOLD_ORE;
+                        else if (oreSelector > 0.60) bType = BlockType.IRON_ORE;
+                        else bType = BlockType.COAL_ORE;
+                      }
+                    }
+                  } else {
+                    // Regular deep ore vein logic inside solid stone
+                    if (y < 8) {
+                      const oreNoise = noise.noise(worldX / 3.5, y / 2.5 + worldZ / 3.5);
+                      if (oreNoise > 0.84) {
+                        const oreSelector = treeRand.next();
+                        if (oreSelector > 0.95 && y < 4) bType = BlockType.DIAMOND_ORE;
+                        else if (oreSelector > 0.85 && y < 6) bType = BlockType.GOLD_ORE;
+                        else if (oreSelector > 0.60) bType = BlockType.IRON_ORE;
+                        else bType = BlockType.COAL_ORE;
+                      }
+                    }
                   }
                 }
               }
@@ -683,6 +729,106 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       setTotalBlocks(countedBlocks);
 
+      // 2.5. Calculate Real-time Voxel Lighting
+      const lightLevels = new Map<string, number>();
+      interface LightSource {
+        x: number;
+        y: number;
+        z: number;
+        level: number;
+      }
+      const lightQueue: LightSource[] = [];
+
+      // Add block light sources
+      worldBlocks.forEach((bType, key) => {
+        const [bx, by, bz] = key.split(',').map(Number);
+        const chunkX = Math.floor(bx / CHUNK_SIZE);
+        const chunkZ = Math.floor(bz / CHUNK_SIZE);
+        if (Math.abs(chunkX - playerChunkX) <= radius && Math.abs(chunkZ - playerChunkZ) <= radius) {
+          if (bType === BlockType.TORCH) {
+            lightQueue.push({ x: bx, y: by, z: bz, level: 14 });
+            lightLevels.set(key, 14);
+          } else if (bType === BlockType.GLOWSTONE || bType === BlockType.GLOWING_LANTERN) {
+            lightQueue.push({ x: bx, y: by, z: bz, level: 15 });
+            lightLevels.set(key, 15);
+          }
+        }
+      });
+
+      // Calculate sky light level based on current timeOfDayValue (ranges 0 - 24000)
+      const hour = timeOfDayValue / 1000;
+      let skyLightIntensity = 15;
+      if (hour > 12 && hour < 24) {
+        if (hour < 14) {
+          skyLightIntensity = 15 - Math.floor((hour - 12) * 6);
+        } else if (hour > 22) {
+          skyLightIntensity = 3 + Math.floor((hour - 22) * 6);
+        } else {
+          skyLightIntensity = 3;
+        }
+      }
+      skyLightIntensity = Math.max(3, Math.min(15, skyLightIntensity));
+
+      // Add sky light sources near the terrain surface to propagate down
+      for (let cx = -radius; cx <= radius; cx++) {
+        for (let cz = -radius; cz <= radius; cz++) {
+          const chunkWorldX = (playerChunkX + cx) * CHUNK_SIZE;
+          const chunkWorldZ = (playerChunkZ + cz) * CHUNK_SIZE;
+          for (let x = 0; x < CHUNK_SIZE; x++) {
+            for (let z = 0; z < CHUNK_SIZE; z++) {
+              const wx = chunkWorldX + x;
+              const wz = chunkWorldZ + z;
+              const terrainH = getTerrainHeight(wx, wz);
+              for (let wy = CHUNK_HEIGHT - 1; wy >= Math.max(0, terrainH - 4); wy--) {
+                const key = `${wx},${wy},${wz}`;
+                const bType = worldBlocks.get(key);
+                const isTrans = !bType || bType === BlockType.WATER || BLOCK_DEFINITIONS[bType]?.isTransparent;
+                
+                if (wy >= terrainH) {
+                  const currentLight = lightLevels.get(key) || 0;
+                  if (skyLightIntensity > currentLight) {
+                    lightLevels.set(key, skyLightIntensity);
+                    lightQueue.push({ x: wx, y: wy, z: wz, level: skyLightIntensity });
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Propagate lighting values via standard 3D BFS
+      let queueIdx = 0;
+      while (queueIdx < lightQueue.length && queueIdx < 3000) {
+        const { x, y, z, level } = lightQueue[queueIdx++];
+        if (level <= 1) continue;
+
+        const nextLevel = level - 1;
+        const directions = [
+          [1, 0, 0], [-1, 0, 0],
+          [0, 1, 0], [0, -1, 0],
+          [0, 0, 1], [0, 0, -1]
+        ];
+
+        for (const [dx, dy, dz] of directions) {
+          const nx = x + dx;
+          const ny = y + dy;
+          const nz = z + dz;
+          const nKey = `${nx},${ny},${nz}`;
+          
+          const nType = worldBlocks.get(nKey);
+          const isTrans = !nType || nType === BlockType.WATER || BLOCK_DEFINITIONS[nType]?.isTransparent || nType === BlockType.TORCH;
+          
+          if (isTrans) {
+            const currentLight = lightLevels.get(nKey) || 0;
+            if (currentLight < nextLevel) {
+              lightLevels.set(nKey, nextLevel);
+              lightQueue.push({ x: nx, y: ny, z: nz, level: nextLevel });
+            }
+          }
+        }
+      }
+
       // 3. Create InstancedMesh for each active block type
       typeCounts.forEach((count, bType) => {
         const mats = getBlockMaterials(bType);
@@ -699,9 +845,51 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           dummy.position.copy(pos);
           dummy.updateMatrix();
           instMesh.setMatrixAt(idx, dummy.matrix);
+
+          // Get light level for shading
+          const key = `${pos.x},${pos.y},${pos.z}`;
+          let lightVal = lightLevels.get(key) || 3;
+          const neighbors = [
+            `${pos.x+1},${pos.y},${pos.z}`, `${pos.x-1},${pos.y},${pos.z}`,
+            `${pos.x},${pos.y+1},${pos.z}`, `${pos.x},${pos.y-1},${pos.z}`,
+            `${pos.x},${pos.y},${pos.z+1}`, `${pos.x},${pos.y},${pos.z-1}`
+          ];
+          for (const nKey of neighbors) {
+            const nType = worldBlocks.get(nKey);
+            if (!nType || nType === BlockType.WATER || BLOCK_DEFINITIONS[nType].isTransparent || nType === BlockType.TORCH) {
+              const nLight = lightLevels.get(nKey) || 3;
+              if (nLight > lightVal) {
+                lightVal = nLight;
+              }
+            }
+          }
+
+          const multiplier = Math.max(0.12, lightVal / 15);
+          let r = multiplier;
+          let g = multiplier;
+          let b = multiplier;
+          
+          if (bType === BlockType.TORCH || bType === BlockType.GLOWSTONE || bType === BlockType.GLOWING_LANTERN) {
+            r = 1.0;
+            g = 1.0;
+            b = 1.0;
+          } else {
+            // Apply slight torch warmth tint when lit by block light sources
+            const isBlockLit = (lightLevels.get(key) || 0) > skyLightIntensity;
+            if (isBlockLit) {
+              r = Math.min(1.0, r * 1.15);
+              g = Math.min(1.0, g * 1.0);
+              b = b * 0.85;
+            }
+          }
+
+          instMesh.setColorAt(idx, new THREE.Color(r, g, b));
         });
 
         instMesh.instanceMatrix.needsUpdate = true;
+        if (instMesh.instanceColor) {
+          instMesh.instanceColor.needsUpdate = true;
+        }
         scene.add(instMesh);
         instancedMeshesMap.set(bType, instMesh);
       });
@@ -902,9 +1090,53 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
-      // Update camera tracking
-      camera.position.copy(playerPos);
-      camera.position.y += PLAYER_HEIGHT - 0.15; // head offset
+      // Update camera and player model tracking
+      const mode = settingsRef.current.cameraMode || 'FIRST_PERSON';
+
+      if (playerMesh) {
+        // Position player mesh at player feet center
+        playerMesh.position.copy(playerPos);
+        // Rotate body around Y matching the yaw look angle
+        playerMesh.rotation.y = camera.rotation.y;
+        
+        // Hide model in first person, show in second and third person
+        playerMesh.visible = mode !== 'FIRST_PERSON';
+
+        // Animate legs/arms when moving on the ground
+        const horizontalSpeed = Math.hypot(playerVelocity.x, playerVelocity.z);
+        if (horizontalSpeed > 0.15 && isGrounded) {
+          const wave = Math.sin(performance.now() * 0.015) * 0.45;
+          leftLegMesh.rotation.x = wave;
+          rightLegMesh.rotation.x = -wave;
+          leftArmMesh.rotation.x = -wave * 0.8;
+          rightArmMesh.rotation.x = wave * 0.8;
+        } else {
+          leftLegMesh.rotation.x = 0;
+          rightLegMesh.rotation.x = 0;
+          leftArmMesh.rotation.x = 0;
+          rightArmMesh.rotation.x = 0;
+        }
+      }
+
+      // Position the camera based on selected perspective mode
+      if (mode === 'FIRST_PERSON') {
+        camera.position.copy(playerPos);
+        camera.position.y += PLAYER_HEIGHT - 0.15; // head offset
+      } else if (mode === 'THIRD_PERSON') {
+        // Back-follow view: camera is behind the player looking forward
+        const cameraDistance = 3.6;
+        const forward = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(camera.rotation.x, camera.rotation.y, 0, 'YXZ'));
+        camera.position.copy(playerPos);
+        camera.position.y += PLAYER_HEIGHT - 0.15;
+        camera.position.addScaledVector(forward, -cameraDistance);
+      } else if (mode === 'SECOND_PERSON') {
+        // Front-facing view: camera is in front of the player looking backward
+        const cameraDistance = 3.6;
+        const forward = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(camera.rotation.x, camera.rotation.y, 0, 'YXZ'));
+        camera.position.copy(playerPos);
+        camera.position.y += PLAYER_HEIGHT - 0.15;
+        camera.position.addScaledVector(forward, cameraDistance);
+      }
 
       // Sync coordinate text in parent overlay (throttled to every 200ms to eliminate React render lag!)
       const now = performance.now();
@@ -1180,6 +1412,66 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     const lineMat = new THREE.LineBasicMaterial({ color: '#ffffff', linewidth: 3 });
     const outlineBox = new THREE.LineSegments(lineGeo, lineMat);
     scene.add(outlineBox);
+
+    // --- 3D BLOCKY PLAYER CHARACTER MESH ---
+    playerMesh = new THREE.Group();
+    
+    // Materials
+    const pSkinMat = new THREE.MeshStandardMaterial({ color: '#ffd3b6', roughness: 0.8 });
+    const pShirtMat = new THREE.MeshStandardMaterial({ color: '#008080', roughness: 0.7 }); // Teal shirt
+    const pPantsMat = new THREE.MeshStandardMaterial({ color: '#1a5276', roughness: 0.75 }); // Dark blue pants
+
+    // Head
+    const headGeo = new THREE.BoxGeometry(0.32, 0.32, 0.32);
+    const headMesh = new THREE.Mesh(headGeo, pSkinMat);
+    headMesh.position.y = 1.35;
+    headMesh.castShadow = true;
+    headMesh.receiveShadow = true;
+    playerMesh.add(headMesh);
+
+    // Torso
+    const torsoGeo = new THREE.BoxGeometry(0.36, 0.52, 0.20);
+    const torsoMesh = new THREE.Mesh(torsoGeo, pShirtMat);
+    torsoMesh.position.y = 0.88;
+    torsoMesh.castShadow = true;
+    torsoMesh.receiveShadow = true;
+    playerMesh.add(torsoMesh);
+
+    // Arms
+    const armGeo = new THREE.BoxGeometry(0.11, 0.48, 0.11);
+    
+    leftArmMesh = new THREE.Mesh(armGeo, pSkinMat);
+    leftArmMesh.geometry.translate(0, -0.2, 0); // shift pivot to shoulder
+    leftArmMesh.position.set(-0.24, 1.05, 0);
+    leftArmMesh.castShadow = true;
+    leftArmMesh.receiveShadow = true;
+    playerMesh.add(leftArmMesh);
+
+    rightArmMesh = new THREE.Mesh(armGeo, pSkinMat);
+    rightArmMesh.geometry.translate(0, -0.2, 0); // shift pivot to shoulder
+    rightArmMesh.position.set(0.24, 1.05, 0);
+    rightArmMesh.castShadow = true;
+    rightArmMesh.receiveShadow = true;
+    playerMesh.add(rightArmMesh);
+
+    // Legs
+    const legGeo = new THREE.BoxGeometry(0.14, 0.48, 0.14);
+
+    leftLegMesh = new THREE.Mesh(legGeo, pPantsMat);
+    leftLegMesh.geometry.translate(0, -0.2, 0); // shift pivot to hip
+    leftLegMesh.position.set(-0.09, 0.55, 0);
+    leftLegMesh.castShadow = true;
+    leftLegMesh.receiveShadow = true;
+    playerMesh.add(leftLegMesh);
+
+    rightLegMesh = new THREE.Mesh(legGeo, pPantsMat);
+    rightLegMesh.geometry.translate(0, -0.2, 0); // shift pivot to hip
+    rightLegMesh.position.set(0.09, 0.55, 0);
+    rightLegMesh.castShadow = true;
+    rightLegMesh.receiveShadow = true;
+    playerMesh.add(rightLegMesh);
+
+    scene.add(playerMesh);
 
     let targetedBlockPos: THREE.Vector3 | null = null;
     let targetedBlockNormal: THREE.Vector3 | null = null;
@@ -1677,11 +1969,39 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             }
           }
 
-          const randType = allowedTypes[Math.floor(Math.random() * allowedTypes.length)];
+          // Try spawning inside a cave underground!
+          let spawnY = -1;
+          let isCaveSpawning = false;
+          let randType = MobType.SHEEP;
+
+          if (Math.random() < 0.40) { // 40% chance to try cave spawning
+            const terrainY = Math.floor(getTerrainHeight(spawnX, spawnZ));
+            // Scan downwards for a hollow air pocket (cave space)
+            for (let y = terrainY - 4; y > 3; y--) {
+              const currentBlock = worldBlocks.get(`${spawnX},${y},${spawnZ}`);
+              const blockBelow = worldBlocks.get(`${spawnX},${y - 1},${spawnZ}`);
+              const blockAbove = worldBlocks.get(`${spawnX},${y + 1},${spawnZ}`);
+              
+              // If current and above are empty, and below is solid ground, we found a cave floor!
+              if (!currentBlock && !blockAbove && blockBelow && blockBelow !== BlockType.WATER) {
+                spawnY = y;
+                isCaveSpawning = true;
+                break;
+              }
+            }
+          }
+
+          if (isCaveSpawning && spawnY > 0) {
+            // Hostile/Bat cave mobs!
+            const cavePool = [MobType.ZOMBIE, MobType.CREEPER, MobType.BAT];
+            randType = cavePool[Math.floor(Math.random() * cavePool.length)];
+          } else {
+            const randTypeSelected = allowedTypes[Math.floor(Math.random() * allowedTypes.length)];
+            randType = randTypeSelected;
+            spawnY = getTerrainHeight(spawnX, spawnZ) + 1;
+          }
+
           const newMob = spawnMobProcedural(randType, playerPos, getTerrainHeight, scene);
-          
-          // Position mob exactly on top of terrain
-          const spawnY = getTerrainHeight(spawnX, spawnZ) + 1;
           newMob.position.set(spawnX, spawnY, spawnZ);
           newMob.group.position.set(spawnX, spawnY, spawnZ);
 
@@ -1698,6 +2018,23 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
+      // Create difficulty-aware stats updater proxy to scale damage dynamically
+      const difficultyAwareStatsUpdate = (updater: any) => {
+        const nextStats = typeof updater === 'function' ? updater(statsRef.current) : { ...statsRef.current, ...updater };
+        if (nextStats.health !== undefined && nextStats.health < statsRef.current.health) {
+          const rawDamage = statsRef.current.health - nextStats.health;
+          const diffSetting = settingsRef.current.difficulty || 'MEDIUM';
+          let scaledDamage = rawDamage;
+          if (diffSetting === 'EASY') {
+            scaledDamage = Math.max(1, Math.round(rawDamage * 0.5)); // half damage
+          } else if (diffSetting === 'HARDCORE') {
+            scaledDamage = Math.round(rawDamage * 2.0); // double damage
+          }
+          nextStats.health = Math.max(0, statsRef.current.health - scaledDamage);
+        }
+        onUpdateStats(nextStats);
+      };
+
       // Update AI behaviors and physical positions
       updateMobs(
         mobsList,
@@ -1706,7 +2043,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         checkMobCollision,
         worldBlocks,
         statsRef.current,
-        onUpdateStats,
+        difficultyAwareStatsUpdate,
         settingsRef.current.soundEnabled,
         scene,
         rebuildInstancedMeshes,

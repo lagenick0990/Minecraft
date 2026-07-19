@@ -271,8 +271,56 @@ export const HUD: React.FC<HUDProps> = ({
               step="1"
               value={settings.renderDistance}
               onChange={(e) => onUpdateSettings({ renderDistance: parseInt(e.target.value) })}
-              className="w-24 accent-yellow-400 cursor-pointer h-1 rounded-md"
+              className="w-full accent-yellow-400 cursor-pointer h-1 rounded-md"
             />
+          </div>
+
+          {/* Live Camera Perspective */}
+          <div className="mt-2 pt-2 border-t border-white/5 space-y-1">
+            <div className="flex justify-between font-mono text-[10px] text-neutral-400">
+              <span>Camera Perspective</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1">
+              {(['FIRST_PERSON', 'SECOND_PERSON', 'THIRD_PERSON'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => onUpdateSettings({ cameraMode: mode })}
+                  className={`px-1.5 py-1 text-[9px] font-bold font-mono uppercase rounded transition-colors
+                    ${settings.cameraMode === mode 
+                      ? 'bg-yellow-500 text-neutral-900 font-black' 
+                      : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'}
+                  `}
+                >
+                  {mode === 'FIRST_PERSON' ? '1st' : mode === 'SECOND_PERSON' ? '2nd' : '3rd'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Live Difficulty Selector */}
+          <div className="mt-2 pt-2 border-t border-white/5 space-y-1">
+            <div className="flex justify-between font-mono text-[10px] text-neutral-400">
+              <span>Difficulty</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1">
+              {(['EASY', 'MEDIUM', 'HARDCORE'] as const).map((diff) => (
+                <button
+                  key={diff}
+                  onClick={() => onUpdateSettings({ difficulty: diff })}
+                  className={`px-1.5 py-1 text-[9px] font-bold font-mono uppercase rounded transition-colors
+                    ${settings.difficulty === diff 
+                      ? diff === 'EASY'
+                        ? 'bg-emerald-500 text-white'
+                        : diff === 'MEDIUM'
+                          ? 'bg-sky-500 text-white'
+                          : 'bg-rose-600 text-white animate-pulse'
+                      : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'}
+                  `}
+                >
+                  {diff}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

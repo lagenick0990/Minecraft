@@ -167,12 +167,51 @@ export function createPixelTexture(
         case BlockType.IRON_ORE:
         case BlockType.GOLD_ORE:
         case BlockType.DIAMOND_ORE:
+        case BlockType.EMERALD_ORE:
           // Ore blocks are stone with colored flakes
           const isFlake = pseudoRand(x * 2.5, y * 3.5) > 0.78;
           if (isFlake) {
             color = accent || '#ffffff';
           } else {
             color = noise > 0.8 ? highlight : noise > 0.2 ? base : shadow;
+          }
+          break;
+
+        case BlockType.EMERALD_BLOCK:
+          const isEmbBorder = x === 0 || x === size - 1 || y === 0 || y === size - 1;
+          const isEmbInnerBorder = x === 2 || x === size - 3 || y === 2 || y === size - 3;
+          if (isEmbBorder) {
+            color = shadow;
+          } else if (isEmbInnerBorder) {
+            color = highlight;
+          } else {
+            color = noise > 0.55 ? highlight : noise > 0.2 ? base : shadow;
+          }
+          break;
+
+        case BlockType.GLOWSTONE:
+          const segmentX = Math.floor(x / 4);
+          const segmentY = Math.floor(y / 4);
+          const isGlowBorder = (x % 4 === 0) || (y % 4 === 0);
+          if (isGlowBorder) {
+            color = '#b7950b';
+          } else {
+            const glowNoise = pseudoRand(segmentX * 2, segmentY * 3);
+            color = glowNoise > 0.6 ? '#fffde7' : glowNoise > 0.2 ? '#fbc02d' : '#f57f17';
+          }
+          break;
+
+        case BlockType.TORCH:
+          const isStick = x >= 7 && x <= 8 && y >= 7 && y <= 15;
+          const isFlame = x >= 6 && x <= 9 && y >= 1 && y <= 6;
+          if (isFlame) {
+            const flameNoise = pseudoRand(x, y + Math.floor(performance.now() / 150));
+            color = flameNoise > 0.6 ? '#ffffff' : flameNoise > 0.25 ? '#ffca28' : '#e65100';
+          } else if (isStick) {
+            color = y % 2 === 0 ? '#5d4037' : '#795548';
+          } else {
+            ctx.clearRect(x, y, 1, 1);
+            continue;
           }
           break;
 
@@ -325,7 +364,7 @@ export function getBlockMaterials(type: BlockType): THREE.Material[] {
     let roughness = 0.85;
     let metalness = 0.0;
     
-    if (type === BlockType.DIAMOND_ORE || type === BlockType.GOLD_ORE) {
+    if (type === BlockType.DIAMOND_ORE || type === BlockType.GOLD_ORE || type === BlockType.EMERALD_ORE) {
       roughness = 0.22;
       metalness = 0.85;
     } else if (type === BlockType.IRON_ORE || type === BlockType.COAL_ORE) {
@@ -340,16 +379,29 @@ export function getBlockMaterials(type: BlockType): THREE.Material[] {
     } else if (type === BlockType.APPLE || type === BlockType.COOKED_PORKCHOP) {
       roughness = 0.35;
       metalness = 0.1;
+    } else if (type === BlockType.EMERALD_BLOCK || type === BlockType.DIAMOND_BLOCK || type === BlockType.GOLD_BLOCK) {
+      roughness = 0.15;
+      metalness = 0.95;
     }
 
-    return new THREE.MeshStandardMaterial({
+    const matParams: THREE.MeshStandardMaterialParameters = {
       map: t,
       roughness,
       metalness,
-      transparent: def.isTransparent || type === BlockType.GLASS || type === BlockType.ICE || type === BlockType.REDWOOD_LEAVES || type === BlockType.WATER || type === BlockType.APPLE || type === BlockType.COOKED_PORKCHOP,
-      alphaTest: type === BlockType.LEAVES || type === BlockType.REDWOOD_LEAVES || type === BlockType.APPLE || type === BlockType.COOKED_PORKCHOP ? 0.05 : 0.0,
+      transparent: def.isTransparent || type === BlockType.GLASS || type === BlockType.ICE || type === BlockType.REDWOOD_LEAVES || type === BlockType.WATER || type === BlockType.APPLE || type === BlockType.COOKED_PORKCHOP || type === BlockType.TORCH,
+      alphaTest: type === BlockType.LEAVES || type === BlockType.REDWOOD_LEAVES || type === BlockType.APPLE || type === BlockType.COOKED_PORKCHOP || type === BlockType.TORCH ? 0.05 : 0.0,
       side: THREE.DoubleSide,
-    });
+    };
+
+    if (type === BlockType.TORCH) {
+      matParams.emissive = new THREE.Color('#ff8d00');
+      matParams.emissiveIntensity = 1.6;
+    } else if (type === BlockType.GLOWSTONE || type === BlockType.GLOWING_LANTERN) {
+      matParams.emissive = new THREE.Color('#ffda79');
+      matParams.emissiveIntensity = 1.0;
+    }
+
+    return new THREE.MeshStandardMaterial(matParams);
   };
 
   if (type === BlockType.GRASS || type === BlockType.SNOW) {

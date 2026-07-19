@@ -116,6 +116,9 @@ export default function App() {
     fov: 75,
     mouseSensitivity: 1.5,
     useTouchControls: false,
+    spawnBiome: 'ANY',
+    difficulty: 'MEDIUM',
+    cameraMode: 'FIRST_PERSON',
   });
 
   // Notifications Log
@@ -250,14 +253,26 @@ export default function App() {
   const isDead = stats.health <= 0;
 
   const handleRespawn = () => {
-    setStats({
-      health: 20,
-      maxHealth: 20,
-      hunger: 20,
-      maxHunger: 20,
-      score: Math.max(0, stats.score - 100), // penalty
-    });
-    addNotification('Respawned back at spawn coordinate Y surface!', 'text-emerald-400');
+    if (settings.difficulty === 'HARDCORE') {
+      setGameMode('CREATIVE');
+      setStats({
+        health: 20,
+        maxHealth: 20,
+        hunger: 20,
+        maxHunger: 20,
+        score: stats.score,
+      });
+      addNotification('Switched to Spectator (Creative Mode)! Hardcore mode locked.', 'text-amber-400 font-bold');
+    } else {
+      setStats({
+        health: 20,
+        maxHealth: 20,
+        hunger: 20,
+        maxHunger: 20,
+        score: Math.max(0, stats.score - 100), // penalty
+      });
+      addNotification('Respawned back at spawn coordinate Y surface!', 'text-emerald-400');
+    }
   };
 
   return (
@@ -342,6 +357,80 @@ export default function App() {
                   >
                     💡 CREATIVE
                   </button>
+                </div>
+              </div>
+
+              {/* Spawn Biome Option */}
+              <div className="space-y-1.5">
+                <label className="block font-mono text-[11px] text-neutral-400 uppercase font-semibold">
+                  Spawn Biome Override
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(['ANY', 'FOREST', 'DESERT', 'WINTER', 'BAMBOO', 'HILLY'] as const).map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => setSettings((prev) => ({ ...prev, spawnBiome: b }))}
+                      className={`rounded border p-1 text-center font-mono text-[10px] uppercase transition-all font-medium
+                        ${settings.spawnBiome === b 
+                          ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400 font-bold shadow-xs' 
+                          : 'border-neutral-750 bg-neutral-800 text-neutral-300 hover:border-neutral-600'}
+                      `}
+                    >
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Game Difficulty Selection */}
+              <div className="space-y-1.5">
+                <label className="block font-mono text-[11px] text-neutral-400 uppercase font-semibold">
+                  Game Difficulty
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['EASY', 'MEDIUM', 'HARDCORE'] as const).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setSettings((prev) => ({ ...prev, difficulty: d }))}
+                      className={`rounded border-2 p-1.5 text-center font-mono text-xs transition-all font-bold
+                        ${settings.difficulty === d 
+                          ? d === 'EASY' 
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-sm'
+                            : d === 'MEDIUM'
+                              ? 'border-sky-500 bg-sky-500/10 text-sky-400 shadow-sm'
+                              : 'border-rose-600 bg-rose-600/15 text-rose-500 shadow-md animate-pulse'
+                          : 'border-neutral-700 bg-neutral-800 text-neutral-400 hover:border-neutral-600'}
+                      `}
+                    >
+                      {d === 'EASY' ? '🟢 ' : d === 'MEDIUM' ? '🔵 ' : '💀 '}
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Camera Perspective Mode Selection */}
+              <div className="space-y-1.5">
+                <label className="block font-mono text-[11px] text-neutral-400 uppercase font-semibold">
+                  Camera Perspective
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['FIRST_PERSON', 'SECOND_PERSON', 'THIRD_PERSON'] as const).map((cam) => (
+                    <button
+                      key={cam}
+                      type="button"
+                      onClick={() => setSettings((prev) => ({ ...prev, cameraMode: cam }))}
+                      className={`rounded border-2 p-1.5 text-center font-mono text-[10px] font-bold transition-all
+                        ${settings.cameraMode === cam 
+                          ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400 shadow-sm' 
+                          : 'border-neutral-700 bg-neutral-800 text-neutral-400 hover:border-neutral-600'}
+                      `}
+                    >
+                      {cam === 'FIRST_PERSON' ? '👁️ 1st' : cam === 'SECOND_PERSON' ? '👤 2nd (Front)' : '🎒 3rd (Back)'}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -480,23 +569,32 @@ export default function App() {
               <AlertTriangle className="h-16 w-16 text-yellow-500 mx-auto animate-pulse" />
               <div className="space-y-2">
                 <h2 className="font-mono text-4xl font-extrabold tracking-widest text-red-500 uppercase drop-shadow-md">
-                  You Died!
+                  {settings.difficulty === 'HARDCORE' ? 'GAME OVER!' : 'You Died!'}
                 </h2>
                 <p className="font-mono text-xs text-red-300 leading-relaxed">
-                  You fell from too high, touched bedrock spikes, or fell into the endless void. Survival can be unforgiving. Let's get you back!
+                  {settings.difficulty === 'HARDCORE' 
+                    ? 'This is a Hardcore world! You have 0 lives left and cannot respawn in Survival. You can only spectate your creations from now on!'
+                    : 'You fell from too high, touched bedrock spikes, or fell into the endless void. Survival can be unforgiving. Let\'s get you back!'
+                  }
                 </p>
               </div>
 
               <div className="bg-black/45 p-4 rounded-lg border border-red-500/20 max-w-xs mx-auto font-mono text-xs">
-                <p className="text-neutral-400">Survival stats reset.</p>
-                <p className="text-yellow-400 font-bold mt-1">Score Penalty: -100</p>
+                {settings.difficulty === 'HARDCORE' ? (
+                  <p className="text-red-400 font-bold uppercase animate-pulse">☠️ Hardcore Mode Ended</p>
+                ) : (
+                  <>
+                    <p className="text-neutral-400">Survival stats reset.</p>
+                    <p className="text-yellow-400 font-bold mt-1">Score Penalty: -100</p>
+                  </>
+                )}
               </div>
 
               <button
                 onClick={handleRespawn}
                 className="w-full max-w-xs mx-auto rounded-lg bg-red-600 px-6 py-3 font-mono text-sm font-bold uppercase hover:bg-red-500 transition-colors cursor-pointer border border-red-400/45 shadow-xl active:translate-y-px"
               >
-                Respawn
+                {settings.difficulty === 'HARDCORE' ? 'Spectate World' : 'Respawn'}
               </button>
             </motion.div>
           </motion.div>

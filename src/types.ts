@@ -33,6 +33,10 @@ export enum BlockType {
   IRON_BLOCK = 31,
   GOLD_BLOCK = 32,
   DIAMOND_BLOCK = 33,
+  TORCH = 34,
+  GLOWSTONE = 35,
+  EMERALD_ORE = 36,
+  EMERALD_BLOCK = 37,
 }
 
 export interface BlockConfig {
@@ -294,6 +298,35 @@ export const BLOCK_DEFINITIONS: Record<BlockType, BlockConfig> = {
     textureColorMap: { base: '#26c6da', shadow: '#0097a7', highlight: '#b2ebf2' },
     isSolid: true,
   },
+  [BlockType.TORCH]: {
+    type: BlockType.TORCH,
+    name: 'Torch',
+    color: '#ff9800',
+    textureColorMap: { base: '#ff9800', shadow: '#e65100', highlight: '#ffe082', accent: '#795548' },
+    isTransparent: true,
+    isSolid: false, // Players can walk through torches
+  },
+  [BlockType.GLOWSTONE]: {
+    type: BlockType.GLOWSTONE,
+    name: 'Glowstone',
+    color: '#f9d976',
+    textureColorMap: { base: '#fbc02d', shadow: '#f57f17', highlight: '#fffde7', accent: '#fff9c4' },
+    isSolid: true,
+  },
+  [BlockType.EMERALD_ORE]: {
+    type: BlockType.EMERALD_ORE,
+    name: 'Emerald Ore',
+    color: '#2ecc71',
+    textureColorMap: { base: '#7f8c8d', shadow: '#616a6b', highlight: '#95a5a6', accent: '#2ecc71' },
+    isSolid: true,
+  },
+  [BlockType.EMERALD_BLOCK]: {
+    type: BlockType.EMERALD_BLOCK,
+    name: 'Emerald Block',
+    color: '#2ecc71',
+    textureColorMap: { base: '#2ecc71', shadow: '#27ae60', highlight: '#a3e4d7' },
+    isSolid: true,
+  },
 };
 
 export interface InventoryItem {
@@ -323,6 +356,9 @@ export interface GameSettings {
   fov: number;
   mouseSensitivity: number;
   useTouchControls: boolean;
+  spawnBiome: 'ANY' | 'FOREST' | 'DESERT' | 'WINTER' | 'BAMBOO' | 'HILLY';
+  difficulty: 'EASY' | 'MEDIUM' | 'HARDCORE';
+  cameraMode: 'FIRST_PERSON' | 'SECOND_PERSON' | 'THIRD_PERSON';
 }
 
 export type WeatherType = 'CLEAR' | 'RAINY' | 'FOGGY';
